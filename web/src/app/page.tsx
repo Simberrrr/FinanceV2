@@ -7,10 +7,17 @@ import {Input} from "@/components/ui/input";
 import {Checkbox} from "@/components/ui/checkbox";
 import {Label} from "@/components/ui/label";
 import {Eye, EyeOff, Mail} from "lucide-react";
+import { useRouter } from "next/navigation";
 export default function Home() {
+  const router = useRouter(); // ✅ use Next.js router
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
+
+  const handleSubmit=( e: React.FormEvent) => {
+    e.preventDefault();
+    router.push('/dashboard');
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 to-primary-100">
@@ -25,7 +32,7 @@ export default function Home() {
             <h1 className="text-2xl font-bold tracking-tighter" >Welcome Back</h1>
             <p className="text-muted-foreground">Sign in to your account to continue</p>
           </div>
-          <form className="space-y-4" >
+          <form className="space-y-4" onSubmit={handleSubmit}>
             <div className="space-y-2">
              <Label htmlFor="email">Email</Label>
              < Input type="email" id="email" onChange={(e) => setEmail(e.target.value)} value={email} placeholder="Enter your email" required />
