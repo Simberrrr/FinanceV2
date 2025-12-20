@@ -5,7 +5,8 @@ import { ChartLineLabel } from "./chart"
 import { ChartPieDonutText } from "./pie_chart"
 import { columns, type Payment } from "./payments/columns"
 import { DataTable } from "./payments/data-table"
-
+import { Button } from "@/components/ui/button"
+import { useState } from "react";
 const payments: Payment[] = [
   {
     id: "1f95c4f3",
@@ -40,35 +41,46 @@ const payments: Payment[] = [
 ]
 
 export default function Dashboard() {
+  const [activeChart, setActiveChart] = useState("line");
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 to-primary-100 py-12">
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 md:px-8">
-        <header className="rounded-2xl bg-white/95 p-8 text-center shadow-xl backdrop-blur">
-          <div className="space-y-3">
-            <h1 className="text-3xl font-bold tracking-tight text-foreground">
+    <div className="min-h-screen space-y-4 py-6 px-6">
+      <div>
+        <header className="mb-6 space-y-2 rounded-lg border p-4 bg-black">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight text-foreground text-white">
               Dashboard
             </h1>
-            <p className="text-muted-foreground">
-              Track your performance metrics and recent payment activity.
-            </p>
           </div>
         </header>
+      </div>
+    {/* Buttons and Chart side by side */}
+    <div className="flex items-start gap-6">
+      {/* Buttons on the left */}
+      <div className="flex flex-col space-y-4">
+          <Button onClick={() => setActiveChart("line")}>Line Chart</Button>
+          <Button onClick={() => setActiveChart("pie")}>Pie Chart</Button>
+          <Button onClick={() => setActiveChart("payments")}>Payments History</Button>
+      </div>
 
-        <section className="grid gap-6 md:grid-cols-2">
-          <ChartLineLabel />
-          <ChartPieDonutText />
-        </section>
-
-        <Card className="border-none bg-white/95 shadow-xl backdrop-blur">
-          <CardHeader>
-            <CardTitle>Payment History</CardTitle>
-          </CardHeader>
-          <CardContent className="px-0 pb-6">
-            <DataTable columns={columns} data={payments} />
-          </CardContent>
-        </Card>
+      {/* Chart on the right */}
+      <div className="w-full">
+          {activeChart === "line" && <ChartLineLabel />}
+          {activeChart === "pie" && <ChartPieDonutText />}
+          {activeChart === "payments" && (
+            <Card className="bg-white/95 shadow-xl backdrop-blur">
+              <CardHeader>
+                <CardTitle>Payment History</CardTitle>
+              </CardHeader>
+              <CardContent className="px-6 pb-6">
+                <DataTable columns={columns} data={payments} />
+              </CardContent>
+            </Card>
+          )}
       </div>
     </div>
+
+    </div>
+
   )
 }
 
