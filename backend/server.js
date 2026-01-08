@@ -1,10 +1,13 @@
+require('dotenv').config();
 const express = require('express');
 const app = express();
 const bcrypt = require('bcrypt');
 app.use(express.json());
 
-const users = [
-];
+
+
+const users = []; 
+
 
 app.get('/users', (req, res) => {
     res.json(users)})
@@ -22,6 +25,21 @@ app.post('/users', async (req, res) => {
         res.status(500).send();
     }
 })
+
+app.post("/login", async (req, res) => {
+  const { password } = req.body;
+
+  const valid = await bcrypt.compare(
+    password,
+    process.env.DASHBOARD_PASSWORD_HASH
+  );
+
+  if (!valid) {
+    return res.status(401).json({ error: "Invalid password" });
+  }
+
+  res.sendStatus(200);
+});
 
 app.post('/users/login', async (req, res) => {
     const user = users.find(user => user.name === req.body.name);
