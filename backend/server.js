@@ -1,15 +1,18 @@
 require('dotenv').config();
 const express = require('express');
+const requireAuth = require("../authmiddleware");
 const app = express();
 const bcrypt = require('bcrypt');
 app.use(express.json());
+const router = express.Router();
 
+router.use(requireAuth);
 
 
 const users = []; 
 
 
-app.get('/users', (req, res) => {
+router.get('/users', (req, res) => {
     res.json(users)})
 
 app.post('/users', async (req, res) => {
@@ -56,6 +59,8 @@ app.post('/users/login', async (req, res) => {
         res.status(500).send();
     }
 })
+
+app.use('/api', router);
 
 app.listen(3000)
 
