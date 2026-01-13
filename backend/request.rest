@@ -1,13 +1,17 @@
-GET http://localhost:3000/users
+GET http://localhost:3300/users/
+
 
 ###
 
+GET http://localhost:3300/users/name
+
+###
 POST http://localhost:3000/users
 Content-Type: application/json
 
 {
-  "name": "newuser",
-  "password": "securepassword"
+  "name": "type",
+  "password": "shit"
 }
 
 ###
@@ -16,15 +20,7 @@ POST http://localhost:3000/users/login
 Content-Type: application/json
 
 {
-  "name": "newuser",
-  "password": "securepassword"
+  "name": "type",
+  "password": "shit"
 }
 
-###
-
-POST http://localhost:3000/login
-Content-Type: application/json
-
-{
-  "password": "fartbutts123"
-}
