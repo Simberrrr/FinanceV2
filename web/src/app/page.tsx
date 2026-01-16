@@ -57,6 +57,16 @@ export default function Home() {
               <a href="#" className="text-sm text-primary-500 hover:text-primary-600">Forgot password?</a>
             </div>
             <Button type="submit" className="w-full">Sign in</Button>
+            <div className="text-center text-sm">
+          <span className="text-muted-foreground">Don’t have an account?</span>{" "}
+          <button
+            type="button"
+            onClick={() => router.push("/signup")}
+            className="text-primary-500 hover:text-primary-600 font-medium"
+          >
+            Create one
+          </button>
+        </div>
           </form>
         </div>
       </motion.div>
