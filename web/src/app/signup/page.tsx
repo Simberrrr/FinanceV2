@@ -27,7 +27,7 @@ export default function SignupPage() {
     }
 
      try {
-    const res = await fetch("http://localhost:3300/users/login", {
+    const res = await fetch("http://localhost:3300/users/user", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
