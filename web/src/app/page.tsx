@@ -17,29 +17,28 @@ export default function Home() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // Add your authentication logic here
-    // For now, just redirect to dashboard
- try {
-    const res = await fetch("http://localhost:3300/users/login", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        username,
-        password,
-      }),
-    })
+    try {
+        const res = await fetch("http://localhost:3300/users/login", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            username,
+            password,
+          }),
+        })
 
-    if (!res.ok) {
-      const error = await res.json()
-      throw new Error(error.message || "Signin failed")
+        if (!res.ok) {
+          const error = await res.json()
+          throw new Error(error.message || "Signin failed")
+        }
+
+        router.push("/dashboard")
+      } 
+    catch (err: any) {
+      alert(err.message)
     }
-
-    router.push("/dashboard")
-  } catch (err: any) {
-    alert(err.message)
-  }
   }
 
   return (
