@@ -24,7 +24,10 @@ export default function FileUplodaer() {
           "Content-Type": "multipart/form-data",
         },
       });
-      setStatus("success");
+
+      if (response.status === 200) {
+        setStatus("success");
+      }
     } catch (error) {
       console.error("Upload failed", error);
       setStatus("error");
