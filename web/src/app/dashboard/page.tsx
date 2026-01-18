@@ -1,12 +1,13 @@
-'use client'
+"use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { ChartLineLabel } from "./chart"
-import { ChartPieDonutText } from "./pie_chart"
-import { columns, type Payment } from "./payments/columns"
-import { DataTable } from "./payments/data-table"
-import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ChartLineLabel } from "./chart";
+import { ChartPieDonutText } from "./pie_chart";
+import { columns, type Payment } from "./payments/columns";
+import { DataTable } from "./payments/data-table";
+import { Button } from "@/components/ui/button";
 import { useState } from "react";
+import FileUplodaer from "./components/FileUploader";
 const payments: Payment[] = [
   {
     id: "1f95c4f3",
@@ -38,10 +39,11 @@ const payments: Payment[] = [
     status: "success",
     email: "amelia@untitledui.com",
   },
-]
+];
 
 export default function Dashboard() {
   const [activeChart, setActiveChart] = useState("line");
+
   return (
     <div className="min-h-screen space-y-4 py-6 px-6">
       <div>
@@ -53,17 +55,22 @@ export default function Dashboard() {
           </div>
         </header>
       </div>
-    {/* Buttons and Chart side by side */}
-    <div className="flex items-start gap-6">
-      {/* Buttons on the left */}
-      <div className="flex flex-col space-y-4">
+      {/* Buttons and Chart side by side */}
+      <div className="flex items-start gap-6">
+        {/* Buttons on the left */}
+        <div className="flex flex-col space-y-4">
           <Button onClick={() => setActiveChart("line")}>Line Chart</Button>
           <Button onClick={() => setActiveChart("pie")}>Pie Chart</Button>
-          <Button onClick={() => setActiveChart("payments")}>Payments History</Button>
-      </div>
+          <Button onClick={() => setActiveChart("payments")}>
+            Payments History
+          </Button>
+          <div>
+            <FileUplodaer />
+          </div>
+        </div>
 
-      {/* Chart on the right */}
-      <div className="w-full">
+        {/* Chart on the right */}
+        <div className="w-full">
           {activeChart === "line" && <ChartLineLabel />}
           {activeChart === "pie" && <ChartPieDonutText />}
           {activeChart === "payments" && (
@@ -76,11 +83,8 @@ export default function Dashboard() {
               </CardContent>
             </Card>
           )}
+        </div>
       </div>
     </div>
-
-    </div>
-
-  )
+  );
 }
-
