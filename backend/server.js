@@ -1,22 +1,21 @@
-require('dotenv').config();
-const express = require('express');
+require("dotenv").config();
+const express = require("express");
 const app = express();
-const usersRouter = require('./routes/users');
+const usersRouter = require("./routes/users");
+const filesRouter = require("./routes/files");
 // Middleware
 app.use(express.json());
 
 // Mount the router at /users
-app.use('/users', usersRouter);
-
+app.use("/users", usersRouter);
+app.use("/files", filesRouter);
 app.listen(3300, () => {
-  console.log('Server running on port 3300');
+  console.log("Server running on port 3300");
 });
 
-
-// const users = []; 
+// const users = [];
 // const bodyParser = require("body-parser");
 // app.use(bodyParser.json());
-
 
 // app.get('/users', (req, res) => {
 //     res.json(users)})
@@ -34,7 +33,6 @@ app.listen(3300, () => {
 //         res.status(500).send();
 //     }
 // })
-
 
 // app.post('/users/login', async (req, res) => {
 //     const user = users.find(user => user.name === req.body.name);
@@ -55,4 +53,3 @@ app.listen(3300, () => {
 // app.use('/api', router);
 
 // app.listen(3300)
-
