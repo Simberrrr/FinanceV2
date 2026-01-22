@@ -14,16 +14,15 @@ export default function FileUplodaer() {
 
   async function handleFileUpload(file: File) {
     if (!file) return;
-
+    if (!file.name.endsWith(".csv")) {
+      setStatus("error");
+      throw new Error("Only CSV files are allowed");
+    }
     setStatus("uploading");
     const formData = new FormData();
     formData.append("file", file);
     try {
-      const response = await axios.post("/api/upload", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      });
+      const response = await axios.post("/api/upload", formData, {});
 
       if (response.status === 200) {
         setStatus("success");
