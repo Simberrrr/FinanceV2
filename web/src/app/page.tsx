@@ -10,16 +10,35 @@ import { Eye, EyeOff, Mail } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 export default function Home() {
-  const [email, setEmail] = useState("")
+  const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const router = useRouter()
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // Add your authentication logic here
-    // For now, just redirect to dashboard
-    router.push('/dashboard')
+    try {
+        const res = await fetch("http://localhost:3300/users/login", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            username,
+            password,
+          }),
+        })
+
+        if (!res.ok) {
+          const error = await res.json()
+          throw new Error(error.message || "Signin failed")
+        }
+
+        router.push("/dashboard")
+      } 
+    catch (err: any) {
+      alert(err.message)
+    }
   }
 
   return (
@@ -37,8 +56,8 @@ export default function Home() {
           </div>
           <form className="space-y-4" onSubmit={handleSubmit}>
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              < Input type="email" id="email" onChange={(e) => setEmail(e.target.value)} value={email} placeholder="Enter your email" required />
+              <Label htmlFor="username">Username</Label>
+              < Input type="text" id="username" onChange={(e) => setUsername(e.target.value)} value={username} placeholder="Enter your username" required />
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
@@ -57,6 +76,16 @@ export default function Home() {
               <a href="#" className="text-sm text-primary-500 hover:text-primary-600">Forgot password?</a>
             </div>
             <Button type="submit" className="w-full">Sign in</Button>
+            <div className="text-center text-sm">
+          <span className="text-muted-foreground">Don’t have an account?</span>{" "}
+          <button
+            type="button"
+            onClick={() => router.push("/signup")}
+            className="text-primary-500 hover:text-primary-600 font-medium"
+          >
+            Create one
+          </button>
+        </div>
           </form>
         </div>
       </motion.div>

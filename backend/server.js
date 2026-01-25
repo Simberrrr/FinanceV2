@@ -1,11 +1,13 @@
 require("dotenv").config();
 const express = require("express");
 const app = express();
-const usersRouter = require("./routes/users");
+
 const filesRouter = require("./routes/files");
+const cors = require('cors'); 
+const usersRouter = require('./routes/users');
 // Middleware
 app.use(express.json());
-
+app.use(cors());
 // Mount the router at /users
 app.use("/users", usersRouter);
 app.use("/files", filesRouter);
