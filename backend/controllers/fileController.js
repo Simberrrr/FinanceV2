@@ -19,6 +19,14 @@ const processFile = async (req, res) => {
         Object.entries(record).filter(([key]) => ALLOWED_COLUMNS.has(key)),
       );
       console.log(filtered);
+      await pool.query(
+        "INSERT INTO transactions (transaction_date, description, amount) VALUES ($1, $2, $3)",
+        [
+          filtered["Transaction Date"],
+          filtered["Description 1"],
+          filtered["CAD$"],
+        ],
+      );
     }
 
     console.log("Finished processing uploaded file");
