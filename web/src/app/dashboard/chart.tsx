@@ -1,6 +1,6 @@
-"use client"
-import { TrendingUp } from "lucide-react"
-import { CartesianGrid, LabelList, Line, LineChart, XAxis } from "recharts"
+"use client";
+import { TrendingUp } from "lucide-react";
+import { CartesianGrid, LabelList, Line, LineChart, XAxis } from "recharts";
 import {
   Card,
   CardContent,
@@ -8,14 +8,14 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card"
+} from "@/components/ui/card";
 import {
   ChartConfig,
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
-} from "@/components/ui/chart"
-export const description = "A line chart with a label"
+} from "@/components/ui/chart";
+export const description = "A line chart with a label";
 const chartData = [
   { month: "January", desktop: 186, mobile: 80 },
   { month: "February", desktop: 305, mobile: 200 },
@@ -23,7 +23,7 @@ const chartData = [
   { month: "April", desktop: 73, mobile: 190 },
   { month: "May", desktop: 209, mobile: 130 },
   { month: "June", desktop: 214, mobile: 140 },
-]
+];
 const chartConfig = {
   desktop: {
     label: "Desktop",
@@ -33,7 +33,7 @@ const chartConfig = {
     label: "Mobile",
     color: "var(--chart-2)",
   },
-} satisfies ChartConfig
+} satisfies ChartConfig;
 export function ChartLineLabel() {
   return (
     <Card>
@@ -95,5 +95,5 @@ export function ChartLineLabel() {
         </div>
       </CardFooter>
     </Card>
-  )
+  );
 }
