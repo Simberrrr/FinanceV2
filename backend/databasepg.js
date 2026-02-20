@@ -1,23 +1,22 @@
-require('dotenv').config();
-const {Client} = require('pg');
+require("dotenv").config();
 
-const client = new Client ({
+const { Pool } = require("pg");
+const pool = new Pool({
   host: process.env.DB_HOST,
   user: process.env.DB_USER,
   port: Number(process.env.DB_PORT),
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
-})
+});
 
 // Connect once when the app starts
-client.connect(err => {
+pool.connect((err) => {
   if (err) {
-    console.error('Database connection error', err.stack);
+    console.error("Database connection error", err.stack);
   } else {
-    console.log('Connected to database');
+    console.log("Connected to database");
   }
 });
 
-// Export the client so other files can use it
-module.exports = client;
-
+// Export the pool so other files can use it
+module.exports = pool;
