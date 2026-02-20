@@ -1,8 +1,10 @@
 const express = require("express");
 const router = express.Router();
+const jwt = require("jsonwebtoken");
 const pool = require("../databasepg.js"); // import the db pool
 const bcrypt = require("bcrypt");
 const { getUserByUsername } = require("../db/users");
+const { authenticateToken } = require("../middleware/auth.js");
 // GET /users
 router.get("/", (req, res) => {
   pool.query("SELECT * FROM users", (err, result) => {
@@ -15,7 +17,7 @@ router.get("/", (req, res) => {
   });
 });
 
-router.get("/:user", async (req, res) => {
+router.get("/:user", authenticateToken, async (req, res) => {
   try {
     const user = await getUserByUsername(req.params.user);
 
@@ -30,31 +32,6 @@ router.get("/:user", async (req, res) => {
   }
 });
 
-router.post("/user", async (req, res) => {
-  try {
-    const salt = await bcrypt.genSalt();
-    const hashedPassword = await bcrypt.hash(req.body.password, salt);
-    const user = { username: req.body.username, password: hashedPassword };
-    let insertQuery = `insert into users(username, password) 
-                       values('${user.username}', '${user.password}')`;
-
-    pool.query(insertQuery, (err, result) => {
-      if (!err) {
-        console.log("Insertion was successful");
-      } else {
-        console.log(err.message);
-      }
-    });
-
-    res.status(201).json({
-      message: "User created",
-      user: { username: req.body.username },
-    });
-  } catch {
-    res.status(500).send();
-  }
-});
-
 router.post("/login", async (req, res) => {
   const user = await getUserByUsername(req.body.username);
   if (user == null) {
@@ -62,8 +39,10 @@ router.post("/login", async (req, res) => {
   }
   try {
     if (await bcrypt.compare(req.body.password, user.password)) {
+      const accessToken = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET);
       res.status(200).json({
         message: "Login successful",
+        accessToken: accessToken,
       });
     } else {
       res.status(401).json({
