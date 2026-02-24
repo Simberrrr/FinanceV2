@@ -8,7 +8,8 @@ const processFile = async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: "No file uploaded" });
   }
-
+  const user = req.user;
+  console.log(user.id);
   try {
     const parser = parse({ columns: true });
 
@@ -20,11 +21,12 @@ const processFile = async (req, res) => {
       );
       console.log(filtered);
       await pool.query(
-        "INSERT INTO transactions (transaction_date, description, amount) VALUES ($1, $2, $3)",
+        "INSERT INTO transactions (transaction_date, description, amount, user_id) VALUES ($1, $2, $3, $4)",
         [
-          filtered["Transaction Date"],
+          convertToISO(filtered["Transaction Date"]),
           filtered["Description 1"],
           filtered["CAD$"],
+          user.id,
         ],
       );
     }
@@ -37,5 +39,10 @@ const processFile = async (req, res) => {
     res.status(500).json({ error: "Failed to process the file." });
   }
 };
+
+function convertToISO(dateStr) {
+  const [month, day, year] = dateStr.split("/");
+  return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+}
 
 module.exports = { processFile };
