@@ -3,6 +3,8 @@ const router = express.Router();
 const pool = require("../databasepg.js"); // import the db pool
 const bcrypt = require("bcrypt");
 const { getUserByUsername } = require("../db/users");
+const jwt = require("jsonwebtoken");
+const { authenticateToken } = require("../middleware/auth");
 // GET /users
 router.get("/", (req, res) => {
   pool.query("SELECT * FROM users", (err, result) => {
@@ -15,7 +17,7 @@ router.get("/", (req, res) => {
   });
 });
 
-router.get("/:user", async (req, res) => {
+router.get("/:user", authenticateToken, async (req, res) => {
   try {
     const user = await getUserByUsername(req.params.user);
 
@@ -27,51 +29,6 @@ router.get("/:user", async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Database query failed" });
-  }
-});
-
-router.post("/user", async (req, res) => {
-  try {
-    const salt = await bcrypt.genSalt();
-    const hashedPassword = await bcrypt.hash(req.body.password, salt);
-    const user = { username: req.body.username, password: hashedPassword };
-    let insertQuery = `insert into users(username, password) 
-                       values('${user.username}', '${user.password}')`;
-
-    pool.query(insertQuery, (err, result) => {
-      if (!err) {
-        console.log("Insertion was successful");
-      } else {
-        console.log(err.message);
-      }
-    });
-
-    res.status(201).json({
-      message: "User created",
-      user: { username: req.body.username },
-    });
-  } catch {
-    res.status(500).send();
-  }
-});
-
-router.post("/login", async (req, res) => {
-  const user = await getUserByUsername(req.body.username);
-  if (user == null) {
-    return res.status(400).json({ error: "Cannot find user" });
-  }
-  try {
-    if (await bcrypt.compare(req.body.password, user.password)) {
-      res.status(200).json({
-        message: "Login successful",
-      });
-    } else {
-      res.status(401).json({
-        error: "Invalid email or password",
-      });
-    }
-  } catch {
-    res.status(500).send();
   }
 });
 
@@ -109,7 +66,29 @@ router.post("/user", async (req, res) => {
   }
 });
 
-router.delete("/:user", async (req, res) => {
+router.post("/login", async (req, res) => {
+  const user = await getUserByUsername(req.body.username);
+  if (user == null) {
+    return res.status(400).json({ error: "Cannot find user" });
+  }
+  try {
+    if (await bcrypt.compare(req.body.password, user.password)) {
+      const accessToken = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET);
+      res.status(200).json({
+        message: "Login successful",
+        accessToken: accessToken,
+      });
+    } else {
+      res.status(401).json({
+        error: "Invalid email or password",
+      });
+    }
+  } catch {
+    res.status(500).send();
+  }
+});
+
+router.delete("/:user", authenticateToken, async (req, res) => {
   const userId = req.params.user;
   try {
     const result = await pool.query("DELETE FROM users WHERE username = $1", [
