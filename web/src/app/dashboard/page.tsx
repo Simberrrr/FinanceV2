@@ -24,31 +24,6 @@ import {
 
 type StatementItem = { label: string; color: string }
 
-const statements: StatementItem[] = [
-  { label: "Feb 2026 • Visa_ending_4821.pdf", color: "#0D0D0D" },
-  { label: "Jan 2026 • Visa_ending_4821.pdf", color: "#7A7A7A" },
-  { label: "Dec 2025 • Visa_ending_4821.pdf", color: "#B0B0B0" },
-]
-
-const dailySpending = [
-  { day: "Day 1", value: 40 },
-  { day: "Day 4", value: 70 },
-  { day: "Day 7", value: 20 },
-  { day: "Day 10", value: 90 },
-  { day: "Day 14", value: 50 },
-  { day: "Day 18", value: 80 },
-  { day: "Day 21", value: 35 },
-  { day: "Day 24", value: 65 },
-  { day: "Day 28", value: 45 },
-]
-
-const spendingByCategory = [
-  { name: "Groceries", value: 35, color: "#E42313" },
-  { name: "Dining out", value: 25, color: "#22C55E" },
-  { name: "Entertainment", value: 20, color: "#0D0D0D" },
-  { name: "Personal care", value: 20, color: "#7A7A7A" },
-]
-
 type PaymentRow = {
   date: string
   merchant: string
@@ -94,6 +69,79 @@ const payments: PaymentRow[] = [
     status: "Paid",
   },
 ]
+
+const statements: StatementItem[] = [
+  { label: "Feb 2026 • Visa_ending_4821.pdf", color: "#0D0D0D" },
+  { label: "Jan 2026 • Visa_ending_4821.pdf", color: "#7A7A7A" },
+  { label: "Dec 2025 • Visa_ending_4821.pdf", color: "#B0B0B0" },
+]
+
+function parseAmount(amount: string): number {
+  const numeric = parseFloat(amount.replace(/[^\d.-]/g, ""))
+  if (Number.isNaN(numeric)) return 0
+  return Math.abs(numeric)
+}
+
+type DailySpendingPoint = { day: string; value: number }
+
+function buildDailySpending(data: PaymentRow[]): DailySpendingPoint[] {
+  const byDate = new Map<string, number>()
+
+  for (const payment of data) {
+    const amount = parseAmount(payment.amount)
+    byDate.set(payment.date, (byDate.get(payment.date) ?? 0) + amount)
+  }
+
+  return Array.from(byDate.entries())
+    .sort(([a], [b]) => {
+      // Use a fixed year to keep sort stable by calendar order.
+      return new Date(`${a} 2026`).getTime() - new Date(`${b} 2026`).getTime()
+    })
+    .map(([date, total]) => ({
+      day: date,
+      value: Number(total.toFixed(2)),
+    }))
+}
+
+type CategorySpendingPoint = {
+  name: string
+  value: number
+  color: string
+  percent: number
+}
+
+const CATEGORY_COLORS: Record<string, string> = {
+  Groceries: "#E42313",
+  "Dining out": "#22C55E",
+  Entertainment: "#0D0D0D",
+  "Personal care": "#7A7A7A",
+  Transportation: "#94A3B8",
+}
+
+function buildCategorySpending(data: PaymentRow[]): CategorySpendingPoint[] {
+  const byCategory = new Map<string, number>()
+
+  for (const payment of data) {
+    const amount = parseAmount(payment.amount)
+    byCategory.set(payment.category, (byCategory.get(payment.category) ?? 0) + amount)
+  }
+
+  const raw = Array.from(byCategory.entries()).map(([name, total]) => ({
+    name,
+    value: Number(total.toFixed(2)),
+    color: CATEGORY_COLORS[name] ?? "#0F172A",
+  }))
+
+  const grandTotal = raw.reduce((sum, item) => sum + item.value, 0)
+
+  return raw.map((item) => ({
+    ...item,
+    percent: grandTotal > 0 ? (item.value / grandTotal) * 100 : 0,
+  }))
+}
+
+const dailySpending = buildDailySpending(payments)
+const spendingByCategory = buildCategorySpending(payments)
 
 function RangeChip({ children }: { children: React.ReactNode }) {
   return (
@@ -266,7 +314,7 @@ export default function Dashboard() {
                         aria-hidden="true"
                       />
                       <div className="text-[12px] font-normal text-[#0D0D0D]">
-                        {c.name} • {c.value}%
+                        {c.name} • {c.percent.toFixed(0)}%
                       </div>
                     </div>
                   ))}

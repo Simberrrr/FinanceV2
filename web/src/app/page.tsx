@@ -13,13 +13,28 @@ export default function Home() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
+  const [emailError, setEmailError] = useState("")
+  const [passwordError, setPasswordError] = useState("")
   const router = useRouter()
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     // Add your authentication logic here
     // For now, just redirect to dashboard
-    router.push('/dashboard')
+    setEmailError("")
+    setPasswordError("")
+    let hasError = false;
+    if (email!= "brucew.boyang@gmail.com" ) {
+      setEmailError("Incorrect Email");
+      hasError = true
+    }
+    if(password!="fart"){
+      setPasswordError("Incorrect Password")
+      hasError = true
+    }
+    if (!(hasError)){
+      router.push("/dashboard");
+    }
   }
 
   return (
@@ -35,15 +50,17 @@ export default function Home() {
             <h1 className="text-2xl font-bold tracking-tighter" >Welcome Back</h1>
             <p className="text-muted-foreground">Sign in to your account to continue</p>
           </div>
-          <form className="space-y-4" onSubmit={handleSubmit}>
+          <form className="space-y-4" onSubmit={handleSubmit} >
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input type="email" id="email" onChange={(e) => setEmail(e.target.value)} value={email} placeholder="Enter your email" required />
+              {emailError && <p className="text-red-500 text-sm">{emailError}</p> }
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
               <div className="relative">
                 <Input type={showPassword ? "text" : "password"} id="password" onChange={(e) => setPassword(e.target.value)} value={password} placeholder="Enter your password" required />
+                {passwordError && <p className="text-red-500 text-sm">{passwordError}</p> }
                 <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700">
                   {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                 </button>
