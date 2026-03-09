@@ -219,6 +219,26 @@ export default function Dashboard() {
                 <div className="h-[140px] w-[140px] shrink-0">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
+                      <Tooltip
+                        cursor={false}
+                        contentStyle={{
+                          backgroundColor: "#FFFFFF",
+                          border: "1px solid #E8E8E8",
+                          borderRadius: 4,
+                          color: "#0D0D0D",
+                          fontSize: 12,
+                          padding: "6px 10px",
+                        }}
+                        formatter={(value: unknown, _name, rawPayload) => {
+                          const amount =
+                            typeof value === "number" ? value : Number(value)
+                          const payload = rawPayload as {
+                            payload?: { name?: string }
+                          }
+                          const label = payload?.payload?.name ?? ""
+                          return [`$${Number(amount).toFixed(2)}`, label]
+                        }}
+                      />
                       <Pie
                         data={spendingByCategory}
                         dataKey="value"
