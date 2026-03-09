@@ -1,2 +1,2 @@
 # FinanceV2
-new fun project 
+personal finance dashboard
