@@ -1,4 +1,4 @@
-'use client'
+"use client";
 
 import * as React from "react"
 import {
@@ -68,7 +68,7 @@ const payments: PaymentRow[] = [
     amount: "-$18.50",
     status: "Paid",
   },
-]
+];
 
 const statements: StatementItem[] = [
   { label: "Feb 2026 • Visa_ending_4821.pdf", color: "#0D0D0D" },
@@ -398,4 +398,3 @@ export default function Dashboard() {
     </div>
   )
 }
-

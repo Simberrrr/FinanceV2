@@ -9,7 +9,7 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card"
+} from "@/components/ui/card";
 import {
   ChartConfig,
   ChartContainer,
@@ -44,14 +44,11 @@ const chartData = [
   { date: "2025-06-10", moneySpent: 200 },
 ];
 
-  
 type ChartItem = {
     date: string;
     moneySpent: number;
   };
 
-
-  // Usage
   const months: string[] = Array.from(
     new Set(chartData.map(item => {
       const [year, month, day] = item.date.split('-').map(Number);
@@ -59,8 +56,6 @@ type ChartItem = {
       return dateObj.toLocaleString('default', { month: 'long' });
     }))
   );
-  
-
 const chartConfig = {
   moneySpent: {
     label: "Money Spent",
@@ -132,5 +127,5 @@ export function ChartLineLabel() {
         </div>
       </CardFooter> */}
     </Card>
-  )
+  );
 }
