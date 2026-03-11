@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { useRouter } from "next/navigation"
 import {
   Bar,
   BarChart,
@@ -387,6 +388,8 @@ function StatementsContent() {
 // ---------------------------------------------------------------------------
 
 export default function Dashboard() {
+  const router = useRouter()
+
   return (
     <Tabs defaultValue="overview" className="flex min-h-screen flex-col bg-background">
       {/* Top Nav */}
@@ -408,7 +411,12 @@ export default function Dashboard() {
             </AvatarFallback>
           </Avatar>
           <Separator orientation="vertical" className="h-5" />
-          <Button variant="ghost" size="icon" className="-ml-1 size-8">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="-ml-1 size-8"
+            onClick={() => router.push("/")}
+          >
             <LogOut className="size-4" />
           </Button>
         </div>
