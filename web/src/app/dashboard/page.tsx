@@ -1,18 +1,35 @@
-"use client";
+"use client"
 
 import * as React from "react"
 import {
   Bar,
   BarChart,
-  Cell,
-  Pie,
-  PieChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
 } from "recharts"
+import {
+  CreditCard,
+  TrendingUp,
+  Receipt,
+  Tag,
+  Calendar,
+  Upload,
+  LogOut,
+  Download,
+} from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card"
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Separator } from "@/components/ui/separator"
 import {
   Table,
   TableBody,
@@ -22,379 +39,389 @@ import {
   TableRow,
 } from "@/components/ui/table"
 
-type StatementItem = { label: string; color: string }
+// ---------------------------------------------------------------------------
+// Data
+// ---------------------------------------------------------------------------
 
 type PaymentRow = {
   date: string
   merchant: string
   category: string
   amount: string
-  status: "Paid"
 }
 
 const payments: PaymentRow[] = [
-  {
-    date: "Mar 02",
-    merchant: "Whole Foods Market",
-    category: "Groceries",
-    amount: "-$86.40",
-    status: "Paid",
-  },
-  {
-    date: "Mar 01",
-    merchant: "Soho Sushi",
-    category: "Dining out",
-    amount: "-$42.10",
-    status: "Paid",
-  },
-  {
-    date: "Feb 28",
-    merchant: "City Gym Membership",
-    category: "Personal care",
-    amount: "-$59.00",
-    status: "Paid",
-  },
-  {
-    date: "Feb 27",
-    merchant: "Netflix",
-    category: "Entertainment",
-    amount: "-$19.99",
-    status: "Paid",
-  },
-  {
-    date: "Feb 25",
-    merchant: "Uber",
-    category: "Transportation",
-    amount: "-$18.50",
-    status: "Paid",
-  },
-];
-
-const statements: StatementItem[] = [
-  { label: "Feb 2026 • Visa_ending_4821.pdf", color: "#0D0D0D" },
-  { label: "Jan 2026 • Visa_ending_4821.pdf", color: "#7A7A7A" },
-  { label: "Dec 2025 • Visa_ending_4821.pdf", color: "#B0B0B0" },
+  { date: "Feb 28", merchant: "Whole Foods Market", category: "Groceries", amount: "-$86.40" },
+  { date: "Feb 27", merchant: "Soho Sushi", category: "Dining out", amount: "-$42.10" },
+  { date: "Feb 26", merchant: "City Gym Membership", category: "Personal care", amount: "-$59.00" },
+  { date: "Feb 25", merchant: "Netflix", category: "Entertainment", amount: "-$19.99" },
+  { date: "Feb 24", merchant: "Uber", category: "Transportation", amount: "-$18.50" },
+  { date: "Feb 23", merchant: "Target", category: "Shopping", amount: "-$134.20" },
+  { date: "Feb 22", merchant: "Starbucks", category: "Dining out", amount: "-$6.80" },
+  { date: "Feb 21", merchant: "Amazon", category: "Shopping", amount: "-$52.00" },
+  { date: "Feb 20", merchant: "Shell Gas", category: "Transportation", amount: "-$48.30" },
+  { date: "Feb 19", merchant: "Trader Joe's", category: "Groceries", amount: "-$67.15" },
 ]
 
-function parseAmount(amount: string): number {
-  const numeric = parseFloat(amount.replace(/[^\d.-]/g, ""))
-  if (Number.isNaN(numeric)) return 0
-  return Math.abs(numeric)
+const dailySpending = [
+  { day: "1", value: 120 },
+  { day: "3", value: 85 },
+  { day: "5", value: 150 },
+  { day: "7", value: 60 },
+  { day: "9", value: 100 },
+  { day: "11", value: 170 },
+  { day: "13", value: 130 },
+  { day: "15", value: 45 },
+  { day: "17", value: 110 },
+  { day: "19", value: 75 },
+  { day: "21", value: 140 },
+  { day: "23", value: 90 },
+  { day: "25", value: 160 },
+  { day: "27", value: 55 },
+]
+
+const CATEGORY_DATA = [
+  { name: "Dining", color: "#f97316", amount: "$1,280" },
+  { name: "Shopping", color: "#3b82f6", amount: "$890" },
+  { name: "Transport", color: "#8b5cf6", amount: "$650" },
+  { name: "Groceries", color: "#10b981", amount: "$520" },
+  { name: "Entertainment", color: "#ec4899", amount: "$450" },
+  { name: "Other", color: "var(--color-muted-foreground)", amount: "$440" },
+]
+
+const METRIC_CARDS = [
+  {
+    label: "Total Spent",
+    value: "$4,230.00",
+    change: "+12.5% from January",
+    changeColor: "text-green-600",
+    icon: CreditCard,
+  },
+  {
+    label: "Avg Per Day",
+    value: "$151.07",
+    change: "-3.2% from January",
+    changeColor: "text-destructive",
+    icon: TrendingUp,
+  },
+  {
+    label: "Transactions",
+    value: "48",
+    change: "+8 from January",
+    changeColor: "text-green-600",
+    icon: Receipt,
+  },
+  {
+    label: "Top Category",
+    value: "Dining",
+    change: "$1,280 · 30% of total",
+    changeColor: "text-muted-foreground",
+    icon: Tag,
+  },
+]
+
+type StatementData = {
+  month: string
+  dateRange: string
+  total: string
+  transactions: string
+  dueDate: string
 }
 
-type DailySpendingPoint = { day: string; value: number }
+const statementsData: StatementData[] = [
+  { month: "February 2026", dateRange: "Feb 1 - Feb 28, 2026", total: "$4,230.00", transactions: "48", dueDate: "Mar 15, 2026" },
+  { month: "January 2026", dateRange: "Jan 1 - Jan 31, 2026", total: "$3,760.50", transactions: "42", dueDate: "Feb 15, 2026" },
+  { month: "December 2025", dateRange: "Dec 1 - Dec 31, 2025", total: "$5,120.00", transactions: "56", dueDate: "Jan 15, 2026" },
+  { month: "November 2025", dateRange: "Nov 1 - Nov 30, 2025", total: "$3,450.75", transactions: "38", dueDate: "Dec 15, 2025" },
+  { month: "October 2025", dateRange: "Oct 1 - Oct 31, 2025", total: "$4,890.20", transactions: "51", dueDate: "Nov 15, 2025" },
+  { month: "September 2025", dateRange: "Sep 1 - Sep 30, 2025", total: "$3,210.00", transactions: "35", dueDate: "Oct 15, 2025" },
+]
 
-function buildDailySpending(data: PaymentRow[]): DailySpendingPoint[] {
-  const byDate = new Map<string, number>()
+// ---------------------------------------------------------------------------
+// Daily Spending chart with custom tooltip that renders outside the SVG
+// ---------------------------------------------------------------------------
 
-  for (const payment of data) {
-    const amount = parseAmount(payment.amount)
-    byDate.set(payment.date, (byDate.get(payment.date) ?? 0) + amount)
-  }
+type TooltipState = { x: number; y: number; day: string; value: number } | null
 
-  return Array.from(byDate.entries())
-    .sort(([a], [b]) => {
-      // Use a fixed year to keep sort stable by calendar order.
-      return new Date(`${a} 2026`).getTime() - new Date(`${b} 2026`).getTime()
-    })
-    .map(([date, total]) => ({
-      day: date,
-      value: Number(total.toFixed(2)),
-    }))
-}
+function DailySpendingChart() {
+  const containerRef = React.useRef<HTMLDivElement>(null)
+  const [tip, setTip] = React.useState<TooltipState>(null)
 
-type CategorySpendingPoint = {
-  name: string
-  value: number
-  color: string
-  percent: number
-}
-
-const CATEGORY_COLORS: Record<string, string> = {
-  Groceries: "#E42313",
-  "Dining out": "#22C55E",
-  Entertainment: "#0D0D0D",
-  "Personal care": "#7A7A7A",
-  Transportation: "#94A3B8",
-}
-
-function buildCategorySpending(data: PaymentRow[]): CategorySpendingPoint[] {
-  const byCategory = new Map<string, number>()
-
-  for (const payment of data) {
-    const amount = parseAmount(payment.amount)
-    byCategory.set(payment.category, (byCategory.get(payment.category) ?? 0) + amount)
-  }
-
-  const raw = Array.from(byCategory.entries()).map(([name, total]) => ({
-    name,
-    value: Number(total.toFixed(2)),
-    color: CATEGORY_COLORS[name] ?? "#0F172A",
-  }))
-
-  const grandTotal = raw.reduce((sum, item) => sum + item.value, 0)
-
-  return raw.map((item) => ({
-    ...item,
-    percent: grandTotal > 0 ? (item.value / grandTotal) * 100 : 0,
-  }))
-}
-
-const dailySpending = buildDailySpending(payments)
-const spendingByCategory = buildCategorySpending(payments)
-
-function RangeChip({ children }: { children: React.ReactNode }) {
   return (
-    <Button
-      type="button"
-      variant="outline"
-      size="sm"
-      className="h-auto rounded-none border-[#E8E8E8] px-[10px] py-1 text-[11px] font-normal text-[#0D0D0D]"
-    >
-      {children}
-    </Button>
-  )
-}
+    <div ref={containerRef} className="relative h-[195px] w-full">
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart
+          data={dailySpending}
+          margin={{ top: 4, right: 4, left: 4, bottom: 0 }}
+          onMouseMove={(state) => {
+            if (
+              state?.isTooltipActive &&
+              state.activePayload?.length &&
+              state.activeCoordinate
+            ) {
+              setTip({
+                x: state.activeCoordinate.x,
+                y: state.activeCoordinate.y,
+                day: state.activeLabel ?? "",
+                value: state.activePayload[0].value as number,
+              })
+            } else {
+              setTip(null)
+            }
+          }}
+          onMouseLeave={() => setTip(null)}
+        >
+          <XAxis
+            dataKey="day"
+            tickLine={false}
+            axisLine={false}
+            tickMargin={8}
+            tick={{
+              fontSize: 11,
+              fill: "hsl(var(--muted-foreground))",
+            }}
+          />
+          <Tooltip content={() => null} cursor={{ fill: "transparent" }} />
+          <Bar
+            dataKey="value"
+            fill="hsl(var(--primary))"
+            radius={[3, 3, 0, 0]}
+          />
+        </BarChart>
+      </ResponsiveContainer>
 
-function SectionTitle({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="font-[family-name:var(--font-display)] text-[18px] font-semibold text-[#0D0D0D]">
-      {children}
+      {tip && (
+        <div
+          className="pointer-events-none absolute z-50 rounded-md border bg-popover px-3 py-1.5 text-[13px] text-popover-foreground shadow-md"
+          style={{
+            left: tip.x,
+            top: tip.y,
+            transform: "translate(-50%, -110%)",
+          }}
+        >
+          <p className="font-medium">Feb {tip.day}, 2026</p>
+          <p>${tip.value}.00</p>
+        </div>
+      )}
     </div>
   )
 }
+
+// ---------------------------------------------------------------------------
+// Overview Tab
+// ---------------------------------------------------------------------------
+
+function OverviewContent() {
+  return (
+    <div className="flex flex-1 flex-col gap-7 px-12 py-7">
+      {/* Page Header */}
+      <div className="flex items-center justify-between">
+        <h1 className="text-[22px] font-semibold tracking-tight">
+          February 2026
+        </h1>
+        <Button variant="outline" size="sm">
+          <Calendar className="mr-2 size-4" />
+          February
+        </Button>
+      </div>
+
+      {/* Metrics Row */}
+      <div className="grid grid-cols-4 gap-4">
+        {METRIC_CARDS.map((card) => (
+          <Card key={card.label} className="gap-0 py-0">
+            <CardHeader className="flex-row items-center justify-between space-y-0 px-5 pb-0 pt-4">
+              <span className="text-sm font-medium text-muted-foreground">
+                {card.label}
+              </span>
+              <card.icon className="size-[18px] text-muted-foreground" />
+            </CardHeader>
+            <CardContent className="px-5 pb-4 pt-1">
+              <div className="text-[32px] font-bold leading-tight tracking-tight">
+                {card.value}
+              </div>
+              <p className={`text-xs ${card.changeColor}`}>{card.change}</p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Charts Row */}
+      <div className="grid grid-cols-[1fr_340px] gap-4">
+        {/* Daily Spending Bar Chart */}
+        <Card className="gap-0 py-0">
+          <CardHeader className="gap-0.5 space-y-0 px-5 pt-4 pb-0">
+            <CardTitle className="text-base">Daily Spending</CardTitle>
+            <CardDescription className="text-xs">
+              February 2026
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="px-5 pb-4 pt-2">
+            <DailySpendingChart />
+          </CardContent>
+        </Card>
+
+        {/* By Category */}
+        <Card className="gap-0 py-0">
+          <CardHeader className="gap-0.5 space-y-0 px-5 pt-4 pb-0">
+            <CardTitle className="text-base">By Category</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3.5 px-5 pb-4 pt-3">
+            {CATEGORY_DATA.map((cat) => (
+              <div key={cat.name} className="flex items-center gap-2.5">
+                <span
+                  className="size-2.5 shrink-0 rounded-full"
+                  style={{ backgroundColor: cat.color }}
+                />
+                <span className="flex-1 text-sm">{cat.name}</span>
+                <span className="text-sm font-semibold">{cat.amount}</span>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Transactions Section */}
+      <div className="flex min-h-0 flex-1 flex-col gap-2">
+        <div className="flex items-center justify-between">
+          <h2 className="text-[15px] font-semibold">Transactions</h2>
+          <span className="text-[13px] text-muted-foreground">
+            48 transactions
+          </span>
+        </div>
+        <Card className="min-h-0 flex-1 gap-0 overflow-hidden py-0">
+          <div className="overflow-auto px-4">
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="w-[110px] text-xs">Date</TableHead>
+                  <TableHead className="text-xs">Merchant</TableHead>
+                  <TableHead className="w-[150px] text-xs">Category</TableHead>
+                  <TableHead className="w-[120px] text-right text-xs">
+                    Amount
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {payments.map((p) => (
+                  <TableRow key={`${p.date}-${p.merchant}`}>
+                    <TableCell className="text-[13px]">{p.date}</TableCell>
+                    <TableCell className="text-[13px]">{p.merchant}</TableCell>
+                    <TableCell className="text-[13px] text-muted-foreground">
+                      {p.category}
+                    </TableCell>
+                    <TableCell className="text-right text-[13px] font-medium">
+                      {p.amount}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </Card>
+      </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Statements Tab
+// ---------------------------------------------------------------------------
+
+function StatementsContent() {
+  return (
+    <div className="flex flex-1 flex-col gap-7 px-12 py-7">
+      <div className="flex items-center justify-between">
+        <h1 className="text-[22px] font-semibold tracking-tight">
+          Statements
+        </h1>
+      </div>
+
+      <div className="flex flex-col gap-3">
+        {statementsData.map((s) => (
+          <Card key={s.month} className="gap-0 py-0">
+            <CardHeader className="flex-row items-center justify-between space-y-0 px-6 py-4">
+              <div className="flex flex-col gap-0.5">
+                <span className="text-[15px] font-semibold leading-snug">
+                  {s.month}
+                </span>
+                <span className="text-[13px] text-muted-foreground">
+                  {s.dateRange}
+                </span>
+              </div>
+              <Button variant="outline" size="sm">
+                <Download className="mr-2 size-4" />
+                Download
+              </Button>
+            </CardHeader>
+            <CardContent className="flex items-center gap-8 px-6 pb-4 pt-0">
+              <div className="flex flex-col gap-0.5">
+                <span className="text-[13px] text-muted-foreground">
+                  Total
+                </span>
+                <span className="text-base font-semibold">{s.total}</span>
+              </div>
+              <div className="flex flex-col gap-0.5">
+                <span className="text-[13px] text-muted-foreground">
+                  Transactions
+                </span>
+                <span className="text-base font-semibold">
+                  {s.transactions}
+                </span>
+              </div>
+              <div className="flex flex-col gap-0.5">
+                <span className="text-[13px] text-muted-foreground">
+                  Due Date
+                </span>
+                <span className="text-base font-semibold">{s.dueDate}</span>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Main Dashboard
+// ---------------------------------------------------------------------------
 
 export default function Dashboard() {
   return (
-    <div className="min-h-screen bg-white px-[28px] py-[20px]">
-      <div className="mx-auto flex w-full max-w-[1440px] gap-8">
-        <aside className="flex h-[calc(100vh-40px)] w-[278px] flex-col gap-5 border border-[#E8E8E8] bg-white px-8 py-10">
-          <div className="flex flex-col gap-1">
-            <div className="font-[family-name:var(--font-display)] text-[16px] font-semibold text-[#0D0D0D]">
-              Statements
-            </div>
-            <div className="text-[12px] font-normal text-[#7A7A7A]">
-              Uploaded credit card statements
-            </div>
-          </div>
+    <Tabs defaultValue="overview" className="flex min-h-screen flex-col bg-background">
+      {/* Top Nav */}
+      <header className="flex h-14 shrink-0 items-center justify-between border-b px-8">
+        <div className="flex items-center gap-6">
+          <TabsList>
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="statements">Statements</TabsTrigger>
+          </TabsList>
+        </div>
+        <div className="flex items-center gap-4">
+          <Button size="sm">
+            <Upload className="mr-2 size-4" />
+            Upload statement
+          </Button>
+          <Avatar className="size-8">
+            <AvatarFallback className="text-xs font-medium">
+              JD
+            </AvatarFallback>
+          </Avatar>
+          <Separator orientation="vertical" className="h-5" />
+          <Button variant="ghost" size="icon" className="-ml-1 size-8">
+            <LogOut className="size-4" />
+          </Button>
+        </div>
+      </header>
 
-          <div className="flex flex-col gap-2">
-            {statements.map((s) => (
-              <div key={s.label} className="flex h-7 items-center gap-2">
-                <div
-                  className="h-4 w-2"
-                  style={{ backgroundColor: s.color }}
-                  aria-hidden="true"
-                />
-                <div className="text-[12px] font-normal text-[#0D0D0D]">
-                  {s.label}
-                </div>
-              </div>
-            ))}
-          </div>
+      {/* Tab Content */}
+      <TabsContent value="overview" className="flex flex-1 flex-col">
+        <OverviewContent />
+      </TabsContent>
 
-          <div className="flex-1" />
-
-          <button
-            type="button"
-            className="w-fit rounded-none px-2 py-3 font-[family-name:var(--font-display)] text-[13px] font-medium text-[#0D0D0D]"
-          >
-            Logout
-          </button>
-        </aside>
-
-        <main className="flex min-w-0 flex-1 flex-col gap-[14px]">
-          <header className="flex items-center justify-between">
-            <h1 className="font-[family-name:var(--font-display)] text-[32px] font-medium tracking-[-1px] text-[#0D0D0D]">
-              Credit Card Overview
-            </h1>
-            <p className="text-[14px] font-normal text-[#7A7A7A]">
-              Track daily spending and recent payments
-            </p>
-          </header>
-
-          <section className="flex flex-col gap-6 lg:flex-row">
-            <div className="flex-1 rounded-none border border-[#E8E8E8] bg-white p-6">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex flex-col gap-1">
-                  <SectionTitle>Spending per day</SectionTitle>
-                  <div className="text-[12px] font-normal text-[#7A7A7A]">
-                    Last 30 days • $4,230 total
-                  </div>
-                </div>
-                <RangeChip>30D</RangeChip>
-              </div>
-
-              <div className="mt-4 h-[224px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={dailySpending} margin={{ top: 8, right: 0, left: 0, bottom: 0 }}>
-                    <XAxis
-                      dataKey="day"
-                      tickLine={false}
-                      axisLine={false}
-                      tickMargin={10}
-                      interval={0}
-                      tick={{ fill: "#7A7A7A", fontSize: 11 }}
-                    />
-                    <Tooltip
-                      cursor={{ fill: "transparent" }}
-                      contentStyle={{
-                        backgroundColor: "#0D0D0D",
-                        border: "none",
-                        borderRadius: 0,
-                        color: "#FFFFFF",
-                        fontSize: 12,
-                      }}
-                      labelStyle={{
-                        color: "#FFFFFF",
-                        fontSize: 11,
-                      }}
-                      formatter={(value: unknown) => [`$${value}`, "spent"]}
-                    />
-                    <Bar dataKey="value" fill="#E42313" radius={0} barSize={8} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
-            <div className="w-full rounded-none border border-[#E8E8E8] bg-white p-6 lg:w-[340px]">
-              <div className="flex items-start justify-between gap-3">
-                <SectionTitle>Spending by category</SectionTitle>
-                <RangeChip>This month</RangeChip>
-              </div>
-
-              <div className="mt-4 flex items-center gap-5">
-                <div className="h-[140px] w-[140px] shrink-0">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Tooltip
-                        cursor={false}
-                        contentStyle={{
-                          backgroundColor: "#FFFFFF",
-                          border: "1px solid #E8E8E8",
-                          borderRadius: 4,
-                          color: "#0D0D0D",
-                          fontSize: 12,
-                          padding: "6px 10px",
-                        }}
-                        formatter={(value: unknown, _name, rawPayload) => {
-                          const amount =
-                            typeof value === "number" ? value : Number(value)
-                          const payload = rawPayload as {
-                            payload?: { name?: string }
-                          }
-                          const label = payload?.payload?.name ?? ""
-                          return [`$${Number(amount).toFixed(2)}`, label]
-                        }}
-                      />
-                      <Pie
-                        data={spendingByCategory}
-                        dataKey="value"
-                        nameKey="name"
-                        innerRadius={52}
-                        outerRadius={70}
-                        paddingAngle={1}
-                        stroke="#FFFFFF"
-                        strokeWidth={2}
-                      >
-                        {spendingByCategory.map((entry) => (
-                          <Cell key={entry.name} fill={entry.color} />
-                        ))}
-                      </Pie>
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-
-                <div className="flex min-w-0 flex-col gap-[10px]">
-                  {spendingByCategory.map((c) => (
-                    <div key={c.name} className="flex items-center gap-2">
-                      <div
-                        className="h-[10px] w-[10px]"
-                        style={{ backgroundColor: c.color }}
-                        aria-hidden="true"
-                      />
-                      <div className="text-[12px] font-normal text-[#0D0D0D]">
-                        {c.name} • {c.percent.toFixed(0)}%
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <section className="flex flex-col gap-3">
-            <div className="flex items-center justify-between gap-3">
-              <div className="font-[family-name:var(--font-display)] text-[18px] font-semibold text-[#0D0D0D]">
-                Payments history
-              </div>
-              <div className="flex items-center gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="h-auto rounded-none border-[#E8E8E8] px-3 py-[6px] text-[13px] font-normal text-[#0D0D0D]"
-                >
-                  Last 30 days
-                </Button>
-                <Button
-                  type="button"
-                  className="h-auto rounded-none bg-[#0D0D0D] px-4 py-2 font-[family-name:var(--font-display)] text-[13px] font-medium text-white hover:bg-[#0D0D0D]/90"
-                >
-                  Upload statement
-                </Button>
-              </div>
-            </div>
-
-            <div className="overflow-hidden rounded-none border border-[#E8E8E8]">
-              <Table className="table-fixed">
-                <TableHeader className="[&_tr]:border-b-[#E8E8E8]">
-                  <TableRow className="hover:bg-transparent">
-                    <TableHead className="h-10 px-5 text-[12px] font-normal text-[#7A7A7A] w-[120px]">
-                      Date
-                    </TableHead>
-                    <TableHead className="h-10 px-5 text-[12px] font-normal text-[#7A7A7A] w-[220px]">
-                      Merchant
-                    </TableHead>
-                    <TableHead className="h-10 px-5 text-[12px] font-normal text-[#7A7A7A] w-[160px]">
-                      Category
-                    </TableHead>
-                    <TableHead className="h-10 px-5 text-right text-[12px] font-normal text-[#7A7A7A] w-[120px]">
-                      Amount
-                    </TableHead>
-                    <TableHead className="h-10 px-5 text-right text-[12px] font-normal text-[#7A7A7A] w-[120px]">
-                      Status
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {payments.map((p) => (
-                    <TableRow
-                      key={`${p.date}-${p.merchant}`}
-                      className="h-11 border-b-[#E8E8E8] hover:bg-transparent"
-                    >
-                      <TableCell className="px-5 text-[13px] font-normal text-[#0D0D0D] w-[120px]">
-                        {p.date}
-                      </TableCell>
-                      <TableCell className="px-5 text-[13px] font-normal text-[#0D0D0D] w-[220px]">
-                        {p.merchant}
-                      </TableCell>
-                      <TableCell className="px-5 text-[13px] font-normal text-[#0D0D0D] w-[160px]">
-                        {p.category}
-                      </TableCell>
-                      <TableCell className="px-5 text-right font-[family-name:var(--font-display)] text-[13px] font-medium text-[#0D0D0D] w-[120px]">
-                        {p.amount}
-                      </TableCell>
-                      <TableCell className="px-5 text-right text-[12px] font-normal text-[#22C55E] w-[120px]">
-                        {p.status}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </section>
-        </main>
-      </div>
-    </div>
+      <TabsContent value="statements" className="flex flex-1 flex-col">
+        <StatementsContent />
+      </TabsContent>
+    </Tabs>
   )
 }
