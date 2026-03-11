@@ -1,0 +1,8 @@
+/.DS_Store
+/.vscode/
+/download-transactions.csv
+/inference_script.py
+/model.py
+/test.csv
+/text_classification.py
+/transactions_auto_labeled.csv
