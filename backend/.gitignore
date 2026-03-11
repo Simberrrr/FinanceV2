@@ -1,1 +1,4 @@
 .env
+test.csv
+transactions_auto_labeled.csv
+model.py
