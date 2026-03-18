@@ -13,8 +13,9 @@ CANONICAL_CATEGORIES = [
     "Dining",
     "Entertainment",
     "Shopping/Personal Care",
-    "Health",
+    "Health/Education",
     "Utilities/Subscriptions",
+    "Transfers",
 ]
 
 DOWNLOAD_TRANSACTIONS_REQUIRED_COLUMNS = [
@@ -35,7 +36,9 @@ CATEGORY_ALIASES = {
     "utilities / subscriptions": "Utilities/Subscriptions",
     "utilities/subscriptions": "Utilities/Subscriptions",
     "entertainment": "Entertainment",
-    "dining": "Dining"
+    "dining": "Dining",
+    "health": "Health/Education",
+    "health/education": "Health/Education",
 }
 
 CATEGORY_KEYWORDS = {
@@ -52,6 +55,7 @@ CATEGORY_KEYWORDS = {
         "parking",
         "onroute",
         "bike share",
+        "uberdirect"
     ],
     "Groceries": [
         "costco",
@@ -64,12 +68,14 @@ CATEGORY_KEYWORDS = {
         "fortinos",
         "freshco",
         "food basics",
+        "foodland"
     ],
     "Dining": [
         "starbucks",
         "tim hortons",
         "mcdonald",
         "kfc",
+        "chicken",
         "chipotle",
         "restaurant",
         "cafe",
@@ -88,7 +94,8 @@ CATEGORY_KEYWORDS = {
         "grill",
         "bar and grill",
         "tst",
-        "tea",
+        "milk tea",
+        "juice",
         "coffee",
         "buns",
     ],
@@ -120,7 +127,7 @@ CATEGORY_KEYWORDS = {
         "the bay",
         "old navy",
     ],
-    "Health": [
+    "Health/Education": [
         "pharmacy",
         "shoppers",
         "rexall",
@@ -146,6 +153,15 @@ CATEGORY_KEYWORDS = {
         "microsoft",
         "icloud",
         "adobe",
+    ],
+    "Transfers": [
+        "payment - thank you",
+        "paiement - merci",
+        "payment thank you",
+        "credit card payment",
+        "online payment",
+        "automatic payment",
+        "balance payment",
     ],
 }
 
@@ -196,7 +212,7 @@ def rule_categorize(description: str, min_score: int = 1) -> tuple[str, int, lis
     return canonicalize_category(top_categories[0]), best_score, matched_keywords
 
 
-def load_model(model_path: str = "categorizer.pkl") -> dict[str, Any]:
+def load_model(model_path: str = "models/categorizer.pkl") -> dict[str, Any]:
     with open(model_path, "rb") as model_file:
         model = pickle.load(model_file)
     if "vectorizer" not in model or "classifier" not in model:
@@ -207,7 +223,7 @@ def load_model(model_path: str = "categorizer.pkl") -> dict[str, Any]:
 def ml_predict(
     description: str,
     model: Mapping[str, Any] | None = None,
-    model_path: str = "categorizer.pkl",
+    model_path: str = "models/categorizer.pkl",
 ) -> tuple[str, float]:
     loaded_model = model or load_model(model_path)
     vectorizer = loaded_model["vectorizer"]
@@ -222,7 +238,7 @@ def ml_predict(
 def ml_predict_batch(
     descriptions: Sequence[str],
     model: Mapping[str, Any] | None = None,
-    model_path: str = "categorizer.pkl",
+    model_path: str = "models/categorizer.pkl",
 ) -> pd.DataFrame:
     loaded_model = model or load_model(model_path)
     vectorizer = loaded_model["vectorizer"]
@@ -247,7 +263,7 @@ def hybrid_categorize(
     min_rule_score: int = 1,
     ml_confidence_threshold: float = 0.5,
     model: Mapping[str, Any] | None = None,
-    model_path: str = "categorizer.pkl",
+    model_path: str = "models/categorizer.pkl",
 ) -> dict[str, Any]:
     rule_category, score, matched_keywords = rule_categorize(description, min_score=min_rule_score)
     if rule_category not in {"Unknown", "LOW_CONFIDENCE"}:
@@ -406,7 +422,7 @@ def validate_download_transactions_schema(frame: pd.DataFrame) -> None:
 
 def classify_download_transactions_frame(
     frame: pd.DataFrame,
-    model_path: str = "categorizer.pkl",
+    model_path: str = "models/categorizer.pkl",
     min_rule_score: int = 1,
     ml_confidence_threshold: float = 0.5,
 ) -> pd.DataFrame:
@@ -425,7 +441,7 @@ def classify_download_transactions_frame(
 def classify_frame_hybrid(
     frame: pd.DataFrame,
     description_column: str = "description",
-    model_path: str = "categorizer.pkl",
+    model_path: str = "models/categorizer.pkl",
     min_rule_score: int = 1,
     ml_confidence_threshold: float = 0.5,
 ) -> pd.DataFrame:

@@ -1,6 +1,7 @@
-/.DS_Store
-/.vscode/
-/download-transactions.csv
-/test.csv
-/transactions_auto_labeled.csv
-/__pycache__/
+.DS_Store
+.vscode/
+__pycache__/
+
+# ML
+ml/data/
+ml/models/*.pkl
