@@ -1,8 +1,6 @@
 /.DS_Store
 /.vscode/
 /download-transactions.csv
-/inference_script.py
-/model.py
 /test.csv
 /transactions_auto_labeled.csv
 /__pycache__/
