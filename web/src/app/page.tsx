@@ -34,6 +34,11 @@ export default function Home() {
         throw new Error(error.message || "Signin failed");
       }
 
+      const data = await res.json();
+      if (data?.accessToken) {
+        localStorage.setItem("accessToken", data.accessToken);
+      }
+
       router.push("/dashboard");
     } catch (err: any) {
       alert(err.message);
