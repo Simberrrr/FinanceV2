@@ -39,30 +39,37 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 // ---------------------------------------------------------------------------
 // Data
 // ---------------------------------------------------------------------------
 
-type PaymentRow = {
-  date: string
-  merchant: string
-  category: string
-  amount: string
+type Transaction = {
+  id: number
+  transaction_date: string
+  description: string
+  amount: string | number
 }
 
-const payments: PaymentRow[] = [
-  { date: "Feb 28", merchant: "Whole Foods Market", category: "Groceries", amount: "-$86.40" },
-  { date: "Feb 27", merchant: "Soho Sushi", category: "Dining out", amount: "-$42.10" },
-  { date: "Feb 26", merchant: "City Gym Membership", category: "Personal care", amount: "-$59.00" },
-  { date: "Feb 25", merchant: "Netflix", category: "Entertainment", amount: "-$19.99" },
-  { date: "Feb 24", merchant: "Uber", category: "Transportation", amount: "-$18.50" },
-  { date: "Feb 23", merchant: "Target", category: "Shopping", amount: "-$134.20" },
-  { date: "Feb 22", merchant: "Starbucks", category: "Dining out", amount: "-$6.80" },
-  { date: "Feb 21", merchant: "Amazon", category: "Shopping", amount: "-$52.00" },
-  { date: "Feb 20", merchant: "Shell Gas", category: "Transportation", amount: "-$48.30" },
-  { date: "Feb 19", merchant: "Trader Joe's", category: "Groceries", amount: "-$67.15" },
-]
+function formatDate(value: string) {
+  const d = new Date(value)
+  if (isNaN(d.getTime())) return value
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" })
+}
+
+function formatAmount(value: string | number) {
+  const n = typeof value === "string" ? parseFloat(value) : value
+  if (isNaN(n)) return "$0.00"
+  const abs = Math.abs(n)
+  return `${n < 0 ? "-" : ""}$${abs.toFixed(2)}`
+}
 
 const dailySpending = [
   { day: "1", value: 120 },
@@ -212,18 +219,59 @@ function DailySpendingChart() {
 // Overview Tab
 // ---------------------------------------------------------------------------
 
-function OverviewContent() {
+function getMonthKey(dateStr: string) {
+  const d = new Date(dateStr)
+  if (isNaN(d.getTime())) return null
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
+}
+
+function formatMonthLabel(key: string) {
+  const [year, month] = key.split("-")
+  const d = new Date(Number(year), Number(month) - 1)
+  return d.toLocaleDateString("en-US", { month: "long", year: "numeric" })
+}
+
+function OverviewContent({ transactions }: { transactions: Transaction[] }) {
+  const [monthFilter, setMonthFilter] = React.useState("all")
+
+  const availableMonths = React.useMemo(() => {
+    const set = new Set<string>()
+    for (const t of transactions) {
+      const key = getMonthKey(t.transaction_date)
+      if (key) set.add(key)
+    }
+    return Array.from(set).sort().reverse()
+  }, [transactions])
+
+  const filtered = React.useMemo(() => {
+    if (monthFilter === "all") return transactions
+    return transactions.filter((t) => getMonthKey(t.transaction_date) === monthFilter)
+  }, [transactions, monthFilter])
+
+  const headerLabel =
+    monthFilter === "all" ? "All Transactions" : formatMonthLabel(monthFilter)
+
   return (
     <div className="flex flex-1 flex-col gap-7 px-12 py-7">
       {/* Page Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-[22px] font-semibold tracking-tight">
-          February 2026
+          {headerLabel}
         </h1>
-        <Button variant="outline" size="sm">
-          <Calendar className="mr-2 size-4" />
-          February
-        </Button>
+        <Select value={monthFilter} onValueChange={setMonthFilter}>
+          <SelectTrigger className="w-[200px]">
+            <Calendar className="mr-2 size-4" />
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All transactions</SelectItem>
+            {availableMonths.map((key) => (
+              <SelectItem key={key} value={key}>
+                {formatMonthLabel(key)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Metrics Row */}
@@ -286,32 +334,32 @@ function OverviewContent() {
         <div className="flex items-center justify-between">
           <h2 className="text-[15px] font-semibold">Transactions</h2>
           <span className="text-[13px] text-muted-foreground">
-            48 transactions
+            {filtered.length} transaction{filtered.length !== 1 ? "s" : ""}
           </span>
         </div>
-        <Card className="min-h-0 flex-1 gap-0 overflow-hidden py-0">
-          <div className="overflow-auto px-4">
+        <Card className="max-h-[400px] gap-0 overflow-hidden py-0">
+          <div className="overflow-auto max-h-[400px] px-4">
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
                   <TableHead className="w-[110px] text-xs">Date</TableHead>
-                  <TableHead className="text-xs">Merchant</TableHead>
-                  <TableHead className="w-[150px] text-xs">Category</TableHead>
+                  <TableHead className="text-xs">Description</TableHead>
                   <TableHead className="w-[120px] text-right text-xs">
                     Amount
                   </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {payments.map((p) => (
-                  <TableRow key={`${p.date}-${p.merchant}`}>
-                    <TableCell className="text-[13px]">{p.date}</TableCell>
-                    <TableCell className="text-[13px]">{p.merchant}</TableCell>
-                    <TableCell className="text-[13px] text-muted-foreground">
-                      {p.category}
+                {filtered.map((t) => (
+                  <TableRow key={t.id}>
+                    <TableCell className="text-[13px]">
+                      {formatDate(t.transaction_date)}
+                    </TableCell>
+                    <TableCell className="text-[13px]">
+                      {t.description}
                     </TableCell>
                     <TableCell className="text-right text-[13px] font-medium">
-                      {p.amount}
+                      {formatAmount(t.amount)}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -391,6 +439,26 @@ export default function Dashboard() {
   const router = useRouter()
   const fileInputRef = React.useRef<HTMLInputElement>(null)
   const [isUploading, setIsUploading] = React.useState(false)
+  const [transactions, setTransactions] = React.useState<Transaction[]>([])
+
+  const fetchTransactions = React.useCallback(async () => {
+    const token = localStorage.getItem("accessToken")
+    if (!token) return
+    try {
+      const res = await fetch("http://localhost:3300/file/transactions", {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (res.ok) {
+        setTransactions(await res.json())
+      }
+    } catch {
+      // silently fail — transactions stay empty
+    }
+  }, [])
+
+  React.useEffect(() => {
+    fetchTransactions()
+  }, [fetchTransactions])
 
   const openFilePicker = () => {
     fileInputRef.current?.click()
@@ -432,6 +500,7 @@ export default function Dashboard() {
         throw new Error(message)
       }
 
+      await fetchTransactions()
       alert("Statement uploaded successfully.")
     } catch (error) {
       alert(error instanceof Error ? error.message : "Upload failed")
@@ -482,7 +551,7 @@ export default function Dashboard() {
 
       {/* Tab Content */}
       <TabsContent value="overview" className="flex flex-1 flex-col">
-        <OverviewContent />
+        <OverviewContent transactions={transactions} />
       </TabsContent>
 
       <TabsContent value="statements" className="flex flex-1 flex-col">

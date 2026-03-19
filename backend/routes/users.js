@@ -6,13 +6,12 @@ const { getUserByUsername } = require("../db/users");
 const jwt = require("jsonwebtoken");
 const { authenticateToken } = require("../middleware/auth");
 // GET /users
-router.get("/", (req, res) => {
-  pool.query("SELECT * FROM users", (err, result) => {
+router.get("/", authenticateToken, (req, res) => {
+  pool.query("SELECT id, username FROM users", (err, result) => {
     if (err) {
       console.error(err.message);
       return res.status(500).json({ error: "Database query failed" });
     }
-    console.log("Database query successful");
     res.json(result.rows);
   });
 });
@@ -73,7 +72,10 @@ router.post("/login", async (req, res) => {
   }
   try {
     if (await bcrypt.compare(req.body.password, user.password)) {
-      const accessToken = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET);
+      const accessToken = jwt.sign(
+        { id: user.id, username: user.username },
+        process.env.ACCESS_TOKEN_SECRET,
+      );
       res.status(200).json({
         message: "Login successful",
         accessToken: accessToken,
@@ -89,10 +91,15 @@ router.post("/login", async (req, res) => {
 });
 
 router.delete("/:user", authenticateToken, async (req, res) => {
-  const userId = req.params.user;
+  const username = req.params.user;
+
+  if (req.user.username !== username) {
+    return res.status(403).json({ error: "You can only delete your own account" });
+  }
+
   try {
     const result = await pool.query("DELETE FROM users WHERE username = $1", [
-      userId,
+      username,
     ]);
     if (result.rowCount === 0) {
       return res.status(404).json({ error: "User not found" });
@@ -102,7 +109,6 @@ router.delete("/:user", authenticateToken, async (req, res) => {
   } catch (err) {
     console.error(err.message);
     res.status(500).json({ error: "Database error" });
-    pool.end();
   }
 });
 
