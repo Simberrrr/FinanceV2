@@ -17,37 +17,38 @@ export default function SignupPage() {
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
+  const [error, setError] = useState("")
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setError("")
 
     if (password !== confirmPassword) {
-      alert("Passwords do not match")
+      setError("Passwords do not match")
       return
     }
 
-     try {
-    const res = await fetch("http://localhost:3300/users/user", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        username,
-        password,
-      }),
-    })
+    try {
+      const res = await fetch("http://localhost:3300/users/user", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          username,
+          password,
+        }),
+      })
 
-    if (!res.ok) {
-      const error = await res.json()
-      throw new Error(error.message || "Signup failed")
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.message || "Signup failed")
+      }
+
+      router.push("/")
+    } catch (err: any) {
+      setError(err.message)
     }
-
-    router.push("/")
-  } catch (err: any) {
-    alert(err.message)
-  }
-
   }
 
   return (
@@ -114,6 +115,10 @@ export default function SignupPage() {
               />
             </div>
 
+
+            {error && (
+              <p className="text-sm text-destructive">{error}</p>
+            )}
 
             <Button type="submit" className="w-full">
               Create account
