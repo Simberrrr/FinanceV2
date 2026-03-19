@@ -77,7 +77,9 @@ const processFile = async (req, res) => {
       const result = await client.query(
         `INSERT INTO transactions (transaction_date, description, amount, category, user_id)
          VALUES ($1, $2, $3, $4, $5)
-         ON CONFLICT (transaction_date, description, amount, user_id) DO NOTHING`,
+         ON CONFLICT (transaction_date, description, amount, user_id)
+         DO UPDATE SET category = EXCLUDED.category
+         WHERE transactions.category = 'Unknown'`,
         [date, description, amount, category, userId],
       );
       if (result.rowCount > 0) added++;
@@ -85,12 +87,10 @@ const processFile = async (req, res) => {
 
     await client.query("COMMIT");
 
-    const duplicates = rows.length - added;
-
     res.status(200).json({
       message: "File processed successfully",
       added,
-      skipped: skipped + duplicates,
+      skipped,
     });
   } catch (error) {
     await client.query("ROLLBACK").catch(() => {});

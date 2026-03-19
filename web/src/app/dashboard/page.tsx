@@ -5,6 +5,9 @@ import { useRouter } from "next/navigation"
 import {
   Bar,
   BarChart,
+  Cell,
+  Pie,
+  PieChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -19,6 +22,7 @@ import {
   LogOut,
   Download,
 } from "lucide-react"
+import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -56,6 +60,7 @@ type Transaction = {
   transaction_date: string
   description: string
   amount: string | number
+  category: string
 }
 
 function formatDate(value: string) {
@@ -71,62 +76,57 @@ function formatAmount(value: string | number) {
   return `${n < 0 ? "-" : ""}$${abs.toFixed(2)}`
 }
 
-const dailySpending = [
-  { day: "1", value: 120 },
-  { day: "3", value: 85 },
-  { day: "5", value: 150 },
-  { day: "7", value: 60 },
-  { day: "9", value: 100 },
-  { day: "11", value: 170 },
-  { day: "13", value: 130 },
-  { day: "15", value: 45 },
-  { day: "17", value: 110 },
-  { day: "19", value: 75 },
-  { day: "21", value: 140 },
-  { day: "23", value: 90 },
-  { day: "25", value: 160 },
-  { day: "27", value: 55 },
+const CATEGORY_COLORS = [
+  "#f97316", "#3b82f6", "#8b5cf6", "#10b981", "#ec4899",
+  "#eab308", "#14b8a6", "#f43f5e", "#6366f1", "#84cc16",
 ]
 
-const CATEGORY_DATA = [
-  { name: "Dining", color: "#f97316", amount: "$1,280" },
-  { name: "Shopping", color: "#3b82f6", amount: "$890" },
-  { name: "Transport", color: "#8b5cf6", amount: "$650" },
-  { name: "Groceries", color: "#10b981", amount: "$520" },
-  { name: "Entertainment", color: "#ec4899", amount: "$450" },
-  { name: "Other", color: "var(--color-muted-foreground)", amount: "$440" },
-]
+function toNum(v: string | number) {
+  return typeof v === "string" ? parseFloat(v) : v
+}
 
-const METRIC_CARDS = [
-  {
-    label: "Total Spent",
-    value: "$4,230.00",
-    change: "+12.5% from January",
-    changeColor: "text-green-600",
-    icon: CreditCard,
-  },
-  {
-    label: "Avg Per Day",
-    value: "$151.07",
-    change: "-3.2% from January",
-    changeColor: "text-destructive",
-    icon: TrendingUp,
-  },
-  {
-    label: "Transactions",
-    value: "48",
-    change: "+8 from January",
-    changeColor: "text-green-600",
-    icon: Receipt,
-  },
-  {
-    label: "Top Category",
-    value: "Dining",
-    change: "$1,280 · 30% of total",
-    changeColor: "text-muted-foreground",
-    icon: Tag,
-  },
-]
+function computeMetrics(txns: Transaction[]) {
+  const totalSpent = txns.reduce((s, t) => s + Math.abs(toNum(t.amount)), 0)
+  const uniqueDays = new Set(txns.map((t) => t.transaction_date.slice(0, 10)))
+  const avgPerDay = uniqueDays.size > 0 ? totalSpent / uniqueDays.size : 0
+
+  // category breakdown
+  const catMap = new Map<string, number>()
+  for (const t of txns) {
+    const cat = t.category || "Uncategorised"
+    catMap.set(cat, (catMap.get(cat) ?? 0) + Math.abs(toNum(t.amount)))
+  }
+  const categories = Array.from(catMap.entries())
+    .map(([name, amount], i) => ({
+      name,
+      amount,
+      color: CATEGORY_COLORS[i % CATEGORY_COLORS.length],
+    }))
+    .sort((a, b) => b.amount - a.amount)
+
+  const topCat = categories[0]
+
+  // daily spending — keyed by ISO date string
+  const dayMap = new Map<string, number>()
+  for (const t of txns) {
+    const d = new Date(t.transaction_date)
+    if (isNaN(d.getTime())) continue
+    const key = t.transaction_date.slice(0, 10)
+    dayMap.set(key, (dayMap.get(key) ?? 0) + Math.abs(toNum(t.amount)))
+  }
+  const dailySpending = Array.from(dayMap.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([dateStr, value]) => {
+      const d = new Date(dateStr)
+      return {
+        day: String(d.getDate()),
+        label: d.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+        value: Math.round(value * 100) / 100,
+      }
+    })
+
+  return { totalSpent, avgPerDay, categories, topCat, dailySpending }
+}
 
 type StatementData = {
   month: string
@@ -149,17 +149,26 @@ const statementsData: StatementData[] = [
 // Daily Spending chart with custom tooltip that renders outside the SVG
 // ---------------------------------------------------------------------------
 
-type TooltipState = { x: number; y: number; day: string; value: number } | null
+type DailyDatum = { day: string; label: string; value: number }
+type TooltipState = { x: number; y: number; label: string; value: number } | null
 
-function DailySpendingChart() {
+function DailySpendingChart({ data }: { data: DailyDatum[] }) {
   const containerRef = React.useRef<HTMLDivElement>(null)
   const [tip, setTip] = React.useState<TooltipState>(null)
+
+  if (data.length === 0) {
+    return (
+      <div className="flex h-[195px] items-center justify-center text-sm text-muted-foreground">
+        No spending data
+      </div>
+    )
+  }
 
   return (
     <div ref={containerRef} className="relative h-[195px] w-full">
       <ResponsiveContainer width="100%" height="100%">
         <BarChart
-          data={dailySpending}
+          data={data}
           margin={{ top: 4, right: 4, left: 4, bottom: 0 }}
           onMouseMove={(state) => {
             if (
@@ -167,11 +176,12 @@ function DailySpendingChart() {
               state.activePayload?.length &&
               state.activeCoordinate
             ) {
+              const payload = state.activePayload[0].payload as DailyDatum
               setTip({
                 x: state.activeCoordinate.x,
                 y: state.activeCoordinate.y,
-                day: state.activeLabel ?? "",
-                value: state.activePayload[0].value as number,
+                label: payload.label,
+                value: payload.value,
               })
             } else {
               setTip(null)
@@ -207,8 +217,8 @@ function DailySpendingChart() {
             transform: "translate(-50%, -110%)",
           }}
         >
-          <p className="font-medium">Feb {tip.day}, 2026</p>
-          <p>${tip.value}.00</p>
+          <p className="font-medium">{tip.label}</p>
+          <p>{formatAmount(tip.value)}</p>
         </div>
       )}
     </div>
@@ -244,12 +254,47 @@ function OverviewContent({ transactions }: { transactions: Transaction[] }) {
   }, [transactions])
 
   const filtered = React.useMemo(() => {
-    if (monthFilter === "all") return transactions
-    return transactions.filter((t) => getMonthKey(t.transaction_date) === monthFilter)
+    const noTransfers = transactions.filter(
+      (t) => (t.category || "").toLowerCase() !== "transfer"
+    )
+    if (monthFilter === "all") return noTransfers
+    return noTransfers.filter((t) => getMonthKey(t.transaction_date) === monthFilter)
   }, [transactions, monthFilter])
 
   const headerLabel =
     monthFilter === "all" ? "All Transactions" : formatMonthLabel(monthFilter)
+
+  const { totalSpent, avgPerDay, categories, topCat, dailySpending } =
+    React.useMemo(() => computeMetrics(filtered), [filtered])
+
+  const metricCards = [
+    {
+      label: "Total Spent",
+      value: formatAmount(totalSpent),
+      detail: `${filtered.length} transaction${filtered.length !== 1 ? "s" : ""}`,
+      icon: CreditCard,
+    },
+    {
+      label: "Avg Per Day",
+      value: formatAmount(avgPerDay),
+      detail: `across ${new Set(filtered.map((t) => t.transaction_date.slice(0, 10))).size} days`,
+      icon: TrendingUp,
+    },
+    {
+      label: "Transactions",
+      value: String(filtered.length),
+      detail: `${categories.length} categor${categories.length !== 1 ? "ies" : "y"}`,
+      icon: Receipt,
+    },
+    {
+      label: "Top Category",
+      value: topCat?.name ?? "—",
+      detail: topCat
+        ? `${formatAmount(topCat.amount)} · ${totalSpent > 0 ? Math.round((topCat.amount / totalSpent) * 100) : 0}% of total`
+        : "No data",
+      icon: Tag,
+    },
+  ]
 
   return (
     <div className="flex flex-1 flex-col gap-7 px-12 py-7">
@@ -276,7 +321,7 @@ function OverviewContent({ transactions }: { transactions: Transaction[] }) {
 
       {/* Metrics Row */}
       <div className="grid grid-cols-4 gap-4">
-        {METRIC_CARDS.map((card) => (
+        {metricCards.map((card) => (
           <Card key={card.label} className="gap-0 py-0">
             <CardHeader className="flex-row items-center justify-between space-y-0 px-5 pb-0 pt-4">
               <span className="text-sm font-medium text-muted-foreground">
@@ -288,7 +333,7 @@ function OverviewContent({ transactions }: { transactions: Transaction[] }) {
               <div className="text-[32px] font-bold leading-tight tracking-tight">
                 {card.value}
               </div>
-              <p className={`text-xs ${card.changeColor}`}>{card.change}</p>
+              <p className="text-xs text-muted-foreground">{card.detail}</p>
             </CardContent>
           </Card>
         ))}
@@ -301,11 +346,11 @@ function OverviewContent({ transactions }: { transactions: Transaction[] }) {
           <CardHeader className="gap-0.5 space-y-0 px-5 pt-4 pb-0">
             <CardTitle className="text-base">Daily Spending</CardTitle>
             <CardDescription className="text-xs">
-              February 2026
+              {headerLabel}
             </CardDescription>
           </CardHeader>
           <CardContent className="px-5 pb-4 pt-2">
-            <DailySpendingChart />
+            <DailySpendingChart data={dailySpending} />
           </CardContent>
         </Card>
 
@@ -314,17 +359,50 @@ function OverviewContent({ transactions }: { transactions: Transaction[] }) {
           <CardHeader className="gap-0.5 space-y-0 px-5 pt-4 pb-0">
             <CardTitle className="text-base">By Category</CardTitle>
           </CardHeader>
-          <CardContent className="flex flex-col gap-3.5 px-5 pb-4 pt-3">
-            {CATEGORY_DATA.map((cat) => (
-              <div key={cat.name} className="flex items-center gap-2.5">
-                <span
-                  className="size-2.5 shrink-0 rounded-full"
-                  style={{ backgroundColor: cat.color }}
-                />
-                <span className="flex-1 text-sm">{cat.name}</span>
-                <span className="text-sm font-semibold">{cat.amount}</span>
-              </div>
-            ))}
+          <CardContent className="px-5 pb-4 pt-3">
+            {categories.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No data</p>
+            ) : (
+              <>
+                <div className="mx-auto h-[140px] w-[140px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={categories}
+                        dataKey="amount"
+                        nameKey="name"
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={36}
+                        outerRadius={64}
+                        strokeWidth={2}
+                      >
+                        {categories.map((cat) => (
+                          <Cell key={cat.name} fill={cat.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        formatter={(value: number) => formatAmount(value)}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="mt-3 flex flex-col gap-2.5">
+                  {categories.map((cat) => (
+                    <div key={cat.name} className="flex items-center gap-2.5">
+                      <span
+                        className="size-2.5 shrink-0 rounded-full"
+                        style={{ backgroundColor: cat.color }}
+                      />
+                      <span className="flex-1 text-sm">{cat.name}</span>
+                      <span className="text-sm font-semibold">
+                        {formatAmount(cat.amount)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -344,6 +422,7 @@ function OverviewContent({ transactions }: { transactions: Transaction[] }) {
                 <TableRow className="hover:bg-transparent">
                   <TableHead className="w-[110px] text-xs">Date</TableHead>
                   <TableHead className="text-xs">Description</TableHead>
+                  <TableHead className="text-xs">Category</TableHead>
                   <TableHead className="w-[120px] text-right text-xs">
                     Amount
                   </TableHead>
@@ -357,6 +436,9 @@ function OverviewContent({ transactions }: { transactions: Transaction[] }) {
                     </TableCell>
                     <TableCell className="text-[13px]">
                       {t.description}
+                    </TableCell>
+                    <TableCell className="text-[13px]">
+                      {t.category}
                     </TableCell>
                     <TableCell className="text-right text-[13px] font-medium">
                       {formatAmount(t.amount)}
@@ -470,7 +552,7 @@ export default function Dashboard() {
 
     const token = localStorage.getItem("accessToken")
     if (!token) {
-      alert("Your session expired. Please sign in again.")
+      toast.error("Your session expired. Please sign in again.")
       router.push("/")
       event.target.value = ""
       return
@@ -501,9 +583,9 @@ export default function Dashboard() {
       }
 
       await fetchTransactions()
-      alert("Statement uploaded successfully.")
+      toast.success("Statement uploaded successfully.")
     } catch (error) {
-      alert(error instanceof Error ? error.message : "Upload failed")
+      toast.error(error instanceof Error ? error.message : "Upload failed")
     } finally {
       setIsUploading(false)
       event.target.value = ""
