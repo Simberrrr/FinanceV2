@@ -13,10 +13,12 @@ export default function Home() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState("");
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError("");
     try {
       const res = await fetch("http://localhost:3300/users/login", {
         method: "POST",
@@ -30,8 +32,8 @@ export default function Home() {
       });
 
       if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message || "Signin failed");
+        const data = await res.json();
+        throw new Error(data.message || "Signin failed");
       }
 
       const data = await res.json();
@@ -41,7 +43,7 @@ export default function Home() {
 
       router.push("/dashboard");
     } catch (err: any) {
-      alert(err.message);
+      setError(err.message);
     }
   };
 
@@ -110,6 +112,9 @@ export default function Home() {
                 Forgot password?
               </a>
             </div>
+            {error && (
+              <p className="text-sm text-destructive">{error}</p>
+            )}
             <Button type="submit" className="w-full">
               Sign in
             </Button>
