@@ -4,4 +4,3 @@ __pycache__/
 
 # ML
 ml/data/
-ml/models/*.pkl
