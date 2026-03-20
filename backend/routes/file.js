@@ -4,6 +4,7 @@ const multer = require("multer");
 const {
   processFile,
   getTransactions,
+  updateCategories,
 } = require("../controllers/fileController");
 const { authenticateToken } = require("../middleware/auth");
 
@@ -42,5 +43,6 @@ router.post(
 );
 
 router.get("/transactions", authenticateToken, getTransactions);
+router.patch("/transactions/categories", authenticateToken, updateCategories);
 
 module.exports = router;

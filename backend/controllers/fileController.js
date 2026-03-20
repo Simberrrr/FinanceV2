@@ -87,10 +87,20 @@ const processFile = async (req, res) => {
 
     await client.query("COMMIT");
 
+    // Fetch any transactions that ended up as "Unknown" for this user
+    const unknownResult = await pool.query(
+      `SELECT id, transaction_date, description, amount, category
+       FROM transactions
+       WHERE user_id = $1 AND category = 'Unknown'
+       ORDER BY transaction_date DESC`,
+      [user.id],
+    );
+
     res.status(200).json({
       message: "File processed successfully",
       added,
       skipped,
+      uncategorized: unknownResult.rows,
     });
   } catch (error) {
     await client.query("ROLLBACK").catch(() => {});
@@ -135,4 +145,36 @@ async function getTransactions(req, res) {
   }
 }
 
-module.exports = { processFile, getTransactions };
+async function updateCategories(req, res) {
+  const user = req.user;
+  const { updates } = req.body; // [{ id, category }]
+
+  if (!Array.isArray(updates) || updates.length === 0) {
+    return res.status(400).json({ error: "No updates provided." });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    let updated = 0;
+    for (const { id, category } of updates) {
+      if (!id || !category) continue;
+      const result = await client.query(
+        `UPDATE transactions SET category = $1
+         WHERE id = $2 AND user_id = $3`,
+        [category, id, user.id],
+      );
+      if (result.rowCount > 0) updated++;
+    }
+    await client.query("COMMIT");
+    res.status(200).json({ updated });
+  } catch (err) {
+    await client.query("ROLLBACK").catch(() => {});
+    console.error("Error updating categories:", err);
+    res.status(500).json({ error: "Failed to update categories." });
+  } finally {
+    client.release();
+  }
+}
+
+module.exports = { processFile, getTransactions, updateCategories };

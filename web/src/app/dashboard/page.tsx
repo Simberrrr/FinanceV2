@@ -33,8 +33,6 @@ import {
   CardDescription,
 } from "@/components/ui/card"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Separator } from "@/components/ui/separator"
 import {
   Table,
   TableBody,
@@ -50,6 +48,29 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
+const CATEGORIES = [
+  "Transportation",
+  "Groceries",
+  "Dining",
+  "Entertainment",
+  "Shopping/Personal Care",
+  "Health/Education",
+  "Utilities/Subscriptions",
+  "Transfers",
+]
 
 // ---------------------------------------------------------------------------
 // Data
@@ -63,9 +84,17 @@ type Transaction = {
   category: string
 }
 
+/** Parse "YYYY-MM-DD" without timezone shift */
+function parseLocalDate(value: string) {
+  const parts = value.slice(0, 10).split("-")
+  if (parts.length !== 3) return null
+  const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]))
+  return isNaN(d.getTime()) ? null : d
+}
+
 function formatDate(value: string) {
-  const d = new Date(value)
-  if (isNaN(d.getTime())) return value
+  const d = parseLocalDate(value)
+  if (!d) return value
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric" })
 }
 
@@ -109,15 +138,15 @@ function computeMetrics(txns: Transaction[]) {
   // daily spending — keyed by ISO date string
   const dayMap = new Map<string, number>()
   for (const t of txns) {
-    const d = new Date(t.transaction_date)
-    if (isNaN(d.getTime())) continue
+    const d = parseLocalDate(t.transaction_date)
+    if (!d) continue
     const key = t.transaction_date.slice(0, 10)
     dayMap.set(key, (dayMap.get(key) ?? 0) + Math.abs(toNum(t.amount)))
   }
   const dailySpending = Array.from(dayMap.entries())
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([dateStr, value]) => {
-      const d = new Date(dateStr)
+      const d = parseLocalDate(dateStr)!
       return {
         day: String(d.getDate()),
         label: d.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
@@ -226,12 +255,136 @@ function DailySpendingChart({ data }: { data: DailyDatum[] }) {
 }
 
 // ---------------------------------------------------------------------------
+// Classify Dialog — shown after upload when some transactions are "Unknown"
+// ---------------------------------------------------------------------------
+
+function ClassifyDialog({
+  open,
+  uncategorized,
+  onDone,
+}: {
+  open: boolean
+  uncategorized: Transaction[]
+  onDone: () => void
+}) {
+  const [assignments, setAssignments] = React.useState<Record<number, string>>({})
+  const [saving, setSaving] = React.useState(false)
+
+  const set = (id: number, cat: string) =>
+    setAssignments((prev) => ({ ...prev, [id]: cat }))
+
+  const allAssigned = uncategorized.every((t) => !!assignments[t.id])
+
+  const handleSave = async () => {
+    const updates = uncategorized
+      .filter((t) => assignments[t.id])
+      .map((t) => ({ id: t.id, category: assignments[t.id] }))
+    if (updates.length === 0) {
+      onDone()
+      return
+    }
+    const token = localStorage.getItem("accessToken")
+    if (!token) return
+    try {
+      setSaving(true)
+      const res = await fetch(
+        "http://localhost:3300/file/transactions/categories",
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ updates }),
+        },
+      )
+      if (!res.ok) throw new Error("Failed to save")
+      toast.success("Categories updated.")
+    } catch {
+      toast.error("Failed to update categories.")
+    } finally {
+      setSaving(false)
+      onDone()
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onDone()}>
+      <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
+        <DialogHeader>
+          <DialogTitle>Classify Transactions</DialogTitle>
+          <DialogDescription>
+            {uncategorized.length} transaction
+            {uncategorized.length !== 1 ? "s" : ""} could not be automatically
+            categorized. Please assign a category to each one.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="overflow-auto flex-1 -mx-6 px-6">
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="w-[100px] text-xs">Date</TableHead>
+                <TableHead className="text-xs">Description</TableHead>
+                <TableHead className="w-[100px] text-right text-xs">
+                  Amount
+                </TableHead>
+                <TableHead className="w-[200px] text-xs">Category</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {uncategorized.map((t) => (
+                <TableRow key={t.id}>
+                  <TableCell className="text-[13px]">
+                    {formatDate(t.transaction_date)}
+                  </TableCell>
+                  <TableCell className="text-[13px]">
+                    {t.description}
+                  </TableCell>
+                  <TableCell className="text-right text-[13px] font-medium">
+                    {formatAmount(t.amount)}
+                  </TableCell>
+                  <TableCell>
+                    <Select
+                      value={assignments[t.id] || ""}
+                      onValueChange={(v) => set(t.id, v)}
+                    >
+                      <SelectTrigger className="h-8 text-[13px]">
+                        <SelectValue placeholder="Select..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {CATEGORIES.map((cat) => (
+                          <SelectItem key={cat} value={cat}>
+                            {cat}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onDone}>
+            Skip
+          </Button>
+          <Button onClick={handleSave} disabled={saving || !allAssigned}>
+            {saving ? "Saving..." : "Save Categories"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Overview Tab
 // ---------------------------------------------------------------------------
 
 function getMonthKey(dateStr: string) {
-  const d = new Date(dateStr)
-  if (isNaN(d.getTime())) return null
+  const d = parseLocalDate(dateStr)
+  if (!d) return null
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
 }
 
@@ -243,7 +396,6 @@ function formatMonthLabel(key: string) {
 
 function OverviewContent({ transactions }: { transactions: Transaction[] }) {
   const [monthFilter, setMonthFilter] = React.useState("all")
-
   const availableMonths = React.useMemo(() => {
     const set = new Set<string>()
     for (const t of transactions) {
@@ -253,19 +405,38 @@ function OverviewContent({ transactions }: { transactions: Transaction[] }) {
     return Array.from(set).sort().reverse()
   }, [transactions])
 
+  const [chartMonthFilter, setChartMonthFilter] = React.useState("")
+
+  React.useEffect(() => {
+    if (availableMonths.length > 0 && !availableMonths.includes(chartMonthFilter)) {
+      setChartMonthFilter(availableMonths[0])
+    }
+  }, [availableMonths, chartMonthFilter])
+
+  const noTransfers = React.useMemo(
+    () => transactions.filter((t) => !(t.category || "").toLowerCase().startsWith("transfer")),
+    [transactions],
+  )
+
   const filtered = React.useMemo(() => {
-    const noTransfers = transactions.filter(
-      (t) => (t.category || "").toLowerCase() !== "transfer"
-    )
     if (monthFilter === "all") return noTransfers
     return noTransfers.filter((t) => getMonthKey(t.transaction_date) === monthFilter)
-  }, [transactions, monthFilter])
+  }, [noTransfers, monthFilter])
 
   const headerLabel =
     monthFilter === "all" ? "All Transactions" : formatMonthLabel(monthFilter)
 
-  const { totalSpent, avgPerDay, categories, topCat, dailySpending } =
+  const { totalSpent, avgPerDay, categories, topCat } =
     React.useMemo(() => computeMetrics(filtered), [filtered])
+
+  const chartFiltered = React.useMemo(() => {
+    if (!chartMonthFilter) return []
+    return noTransfers.filter((t) => getMonthKey(t.transaction_date) === chartMonthFilter)
+  }, [noTransfers, chartMonthFilter])
+
+  const { dailySpending } = React.useMemo(() => computeMetrics(chartFiltered), [chartFiltered])
+
+  const chartLabel = chartMonthFilter ? formatMonthLabel(chartMonthFilter) : ""
 
   const metricCards = [
     {
@@ -343,11 +514,26 @@ function OverviewContent({ transactions }: { transactions: Transaction[] }) {
       <div className="grid grid-cols-[1fr_340px] gap-4">
         {/* Daily Spending Bar Chart */}
         <Card className="gap-0 py-0">
-          <CardHeader className="gap-0.5 space-y-0 px-5 pt-4 pb-0">
-            <CardTitle className="text-base">Daily Spending</CardTitle>
-            <CardDescription className="text-xs">
-              {headerLabel}
-            </CardDescription>
+          <CardHeader className="flex-row items-center justify-between space-y-0 px-5 pt-4 pb-0">
+            <div className="flex flex-col gap-0.5">
+              <CardTitle className="text-base">Daily Spending</CardTitle>
+              <CardDescription className="text-xs">
+                {chartLabel}
+              </CardDescription>
+            </div>
+            <Select value={chartMonthFilter} onValueChange={setChartMonthFilter}>
+              <SelectTrigger className="w-[170px] h-8 text-xs">
+                <Calendar className="mr-1.5 size-3.5" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {availableMonths.map((key) => (
+                  <SelectItem key={key} value={key}>
+                    {formatMonthLabel(key)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </CardHeader>
           <CardContent className="px-5 pb-4 pt-2">
             <DailySpendingChart data={dailySpending} />
@@ -522,6 +708,8 @@ export default function Dashboard() {
   const fileInputRef = React.useRef<HTMLInputElement>(null)
   const [isUploading, setIsUploading] = React.useState(false)
   const [transactions, setTransactions] = React.useState<Transaction[]>([])
+  const [uncategorized, setUncategorized] = React.useState<Transaction[]>([])
+  const [showClassify, setShowClassify] = React.useState(false)
 
   const fetchTransactions = React.useCallback(async () => {
     const token = localStorage.getItem("accessToken")
@@ -582,8 +770,15 @@ export default function Dashboard() {
         throw new Error(message)
       }
 
+      const data = await res.json()
       await fetchTransactions()
-      toast.success("Statement uploaded successfully.")
+
+      if (data.uncategorized && data.uncategorized.length > 0) {
+        setUncategorized(data.uncategorized)
+        setShowClassify(true)
+      } else {
+        toast.success("Statement uploaded successfully.")
+      }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Upload failed")
     } finally {
@@ -614,12 +809,6 @@ export default function Dashboard() {
             <Upload className="mr-2 size-4" />
             {isUploading ? "Uploading..." : "Upload statement"}
           </Button>
-          <Avatar className="size-8">
-            <AvatarFallback className="text-xs font-medium">
-              JD
-            </AvatarFallback>
-          </Avatar>
-          <Separator orientation="vertical" className="h-5" />
           <Button
             variant="ghost"
             size="icon"
@@ -639,6 +828,16 @@ export default function Dashboard() {
       <TabsContent value="statements" className="flex flex-1 flex-col">
         <StatementsContent />
       </TabsContent>
+
+      <ClassifyDialog
+        open={showClassify}
+        uncategorized={uncategorized}
+        onDone={() => {
+          setShowClassify(false)
+          setUncategorized([])
+          fetchTransactions()
+        }}
+      />
     </Tabs>
   )
 }
