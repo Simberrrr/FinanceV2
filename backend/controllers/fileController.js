@@ -4,7 +4,7 @@ const axios = require("axios");
 
 const pool = require("../databasepg.js");
 
-const ML_SERVICE_URL = process.env.ML_SERVICE_URL || "http://localhost:5000";
+const ML_SERVICE_URL = process.env.ML_SERVICE_URL || "http://localhost:5001";
 
 const processFile = async (req, res) => {
   if (!req.file) {
