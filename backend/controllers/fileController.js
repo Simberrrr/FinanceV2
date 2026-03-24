@@ -4,7 +4,7 @@ const axios = require("axios");
 
 const pool = require("../databasepg.js");
 
-const ML_SERVICE_URL = process.env.ML_SERVICE_URL || "http://localhost:5000";
+const ML_SERVICE_URL = process.env.ML_SERVICE_URL || "http://localhost:5001";
 
 const processFile = async (req, res) => {
   if (!req.file) {
@@ -71,13 +71,18 @@ const processFile = async (req, res) => {
     await client.query("BEGIN");
 
     let added = 0;
+    let duplicates = 0;
     for (let i = 0; i < rows.length; i++) {
       const [date, description, amount, userId] = rows[i];
       const category = classifications[i]?.category || "Unknown";
       const result = await client.query(
         `INSERT INTO transactions (transaction_date, description, amount, category, user_id)
          VALUES ($1, $2, $3, $4, $5)
-         ON CONFLICT (transaction_date, description, amount, user_id) DO NOTHING`,
+         ON CONFLICT (transaction_date, description, amount, user_id)
+         DO UPDATE SET category = CASE
+           WHEN transactions.category IN ('Unknown', 'LOW_CONFIDENCE') THEN EXCLUDED.category
+           ELSE transactions.category
+         END`,
         [date, description, amount, category, userId],
       );
       if (result.rowCount > 0) added++;
@@ -85,12 +90,20 @@ const processFile = async (req, res) => {
 
     await client.query("COMMIT");
 
-    const duplicates = rows.length - added;
+    // Fetch any transactions that ended up as "Unknown" or "LOW_CONFIDENCE" for this user
+    const unknownResult = await pool.query(
+      `SELECT id, transaction_date, description, amount, category
+       FROM transactions
+       WHERE user_id = $1 AND category IN ('Unknown', 'LOW_CONFIDENCE')
+       ORDER BY transaction_date DESC`,
+      [user.id],
+    );
 
     res.status(200).json({
       message: "File processed successfully",
       added,
-      skipped: skipped + duplicates,
+      skipped,
+      uncategorized: unknownResult.rows,
     });
   } catch (error) {
     await client.query("ROLLBACK").catch(() => {});
@@ -135,4 +148,36 @@ async function getTransactions(req, res) {
   }
 }
 
-module.exports = { processFile, getTransactions };
+async function updateCategories(req, res) {
+  const user = req.user;
+  const { updates } = req.body; // [{ id, category }]
+
+  if (!Array.isArray(updates) || updates.length === 0) {
+    return res.status(400).json({ error: "No updates provided." });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    let updated = 0;
+    for (const { id, category } of updates) {
+      if (!id || !category) continue;
+      const result = await client.query(
+        `UPDATE transactions SET category = $1
+         WHERE id = $2 AND user_id = $3`,
+        [category, id, user.id],
+      );
+      if (result.rowCount > 0) updated++;
+    }
+    await client.query("COMMIT");
+    res.status(200).json({ updated });
+  } catch (err) {
+    await client.query("ROLLBACK").catch(() => {});
+    console.error("Error updating categories:", err);
+    res.status(500).json({ error: "Failed to update categories." });
+  } finally {
+    client.release();
+  }
+}
+
+module.exports = { processFile, getTransactions, updateCategories };

@@ -1,0 +1,13 @@
+{
+  "name": "financev2",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently -n web,api,ml -c cyan,green,magenta \"npm run dev:web\" \"npm run dev:api\" \"npm run dev:ml\"",
+    "dev:web": "cd web && npm run dev",
+    "dev:api": "cd backend && npm run devStart",
+    "dev:ml": "cd ml && python inference_script.py"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
