@@ -61,9 +61,9 @@ const PIE_COLORS: Record<string, string> = {
   Groceries: "#D5C7A3",
   Entertainment: "#C9B8D9",
   Other: "#DADAD8",
-  "Health/Education": "#DADAD8",
-  "Utilities/Subscriptions": "#DADAD8",
-  Transfers: "#DADAD8",
+  "Health/Education": "#A8C8B8",
+  "Utilities/Subscriptions": "#F2D4A0",
+  Transfers: "#B8C8D9",
 }
 
 const CATEGORIES = [
@@ -78,7 +78,7 @@ const CATEGORIES = [
 ]
 
 // Max categories to show individually in pie; rest grouped as "Other"
-const MAX_PIE_SLICES = 5
+const MAX_PIE_SLICES = 7
 
 // ---------------------------------------------------------------------------
 // Types & helpers
@@ -520,6 +520,7 @@ export default function Dashboard() {
   const [uncategorized, setUncategorized] = React.useState<Transaction[]>([])
   const [showClassify, setShowClassify] = React.useState(false)
   const [monthFilter, setMonthFilter] = React.useState("")
+  const [categoryFilter, setCategoryFilter] = React.useState("All")
 
   const fetchTransactions = React.useCallback(async () => {
     const token = localStorage.getItem("accessToken")
@@ -573,6 +574,21 @@ export default function Dashboard() {
     if (!monthFilter) return noTransfers
     return noTransfers.filter((t) => getMonthKey(t.transaction_date) === monthFilter)
   }, [noTransfers, monthFilter])
+
+  // Unique categories for the filter dropdown
+  const availableCategories = React.useMemo(() => {
+    const set = new Set<string>()
+    for (const t of filtered) {
+      if (t.category) set.add(t.category)
+    }
+    return Array.from(set).sort()
+  }, [filtered])
+
+  // Apply category filter for the transaction list
+  const displayedTransactions = React.useMemo(() => {
+    if (categoryFilter === "All") return filtered
+    return filtered.filter((t) => t.category === categoryFilter)
+  }, [filtered, categoryFilter])
 
   const { totalSpent, avgPerDay, categories, topCat, dailySpending } = React.useMemo(
     () => computeMetrics(filtered),
@@ -910,9 +926,31 @@ export default function Dashboard() {
             <span style={{ fontSize: 16, fontWeight: 600, color: COLORS.textPrimary }}>
               Recent Transactions
             </span>
-            <span style={{ fontSize: 12, fontWeight: 500, color: COLORS.link, cursor: "pointer" }}>
-              View All
-            </span>
+            <div className="flex items-center gap-3">
+              <select
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value)}
+                style={{
+                  fontSize: 12,
+                  fontWeight: 500,
+                  color: COLORS.textSecondary,
+                  background: COLORS.background,
+                  border: `1px solid ${COLORS.divider}`,
+                  borderRadius: 8,
+                  padding: "6px 12px",
+                  cursor: "pointer",
+                  outline: "none",
+                }}
+              >
+                <option value="All">All Categories</option>
+                {availableCategories.map((cat) => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
+              </select>
+              <span style={{ fontSize: 12, fontWeight: 500, color: COLORS.link, cursor: "pointer" }}>
+                View All
+              </span>
+            </div>
           </div>
 
           {/* Column headers */}
@@ -934,7 +972,7 @@ export default function Dashboard() {
 
           {/* Rows */}
           <div className="flex-1 overflow-auto" style={{ maxHeight: 400 }}>
-            {filtered.map((t) => (
+            {displayedTransactions.map((t) => (
               <div
                 key={t.id}
                 className="grid items-center"

@@ -71,6 +71,7 @@ const processFile = async (req, res) => {
     await client.query("BEGIN");
 
     let added = 0;
+    let duplicates = 0;
     for (let i = 0; i < rows.length; i++) {
       const [date, description, amount, userId] = rows[i];
       const category = classifications[i]?.category || "Unknown";
@@ -78,8 +79,10 @@ const processFile = async (req, res) => {
         `INSERT INTO transactions (transaction_date, description, amount, category, user_id)
          VALUES ($1, $2, $3, $4, $5)
          ON CONFLICT (transaction_date, description, amount, user_id)
-         DO UPDATE SET category = EXCLUDED.category
-         WHERE transactions.category = 'Unknown'`,
+         DO UPDATE SET category = CASE
+           WHEN transactions.category IN ('Unknown', 'LOW_CONFIDENCE') THEN EXCLUDED.category
+           ELSE transactions.category
+         END`,
         [date, description, amount, category, userId],
       );
       if (result.rowCount > 0) added++;
@@ -87,11 +90,11 @@ const processFile = async (req, res) => {
 
     await client.query("COMMIT");
 
-    // Fetch any transactions that ended up as "Unknown" for this user
+    // Fetch any transactions that ended up as "Unknown" or "LOW_CONFIDENCE" for this user
     const unknownResult = await pool.query(
       `SELECT id, transaction_date, description, amount, category
        FROM transactions
-       WHERE user_id = $1 AND category = 'Unknown'
+       WHERE user_id = $1 AND category IN ('Unknown', 'LOW_CONFIDENCE')
        ORDER BY transaction_date DESC`,
       [user.id],
     );
