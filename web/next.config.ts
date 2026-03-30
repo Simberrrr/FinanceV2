@@ -1,9 +1,9 @@
 import type { NextConfig } from "next";
 
-const nextConfig = {
-  compiler: {
-    reactCompiler: true,
+const nextConfig: NextConfig = {
+  turbopack: {
+    root: __dirname,
   },
-} as unknown as NextConfig;
+};
 
 export default nextConfig;
