@@ -9,7 +9,7 @@ import {
   ResponsiveContainer,
   Tooltip,
 } from "recharts"
-import { LogOut, Upload } from "lucide-react"
+import { EyeOff, LogOut, Upload } from "lucide-react"
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
@@ -28,14 +28,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
 
 // ---------------------------------------------------------------------------
 // Design tokens from spec
@@ -394,7 +386,7 @@ function ClassifyDialog({
         },
       )
       if (!res.ok) throw new Error("Failed to save")
-      toast.success("Categories updated.")
+      toast.success("Categories updated.", { duration: 5000 })
     } catch {
       toast.error("Failed to update categories.")
     } finally {
@@ -405,7 +397,7 @@ function ClassifyDialog({
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onDone()}>
-      <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
+      <DialogContent className="flex max-h-[85vh] w-[95vw] max-w-[95vw] sm:max-w-4xl flex-col">
         <DialogHeader>
           <DialogTitle>Classify Transactions</DialogTitle>
           <DialogDescription>
@@ -414,38 +406,53 @@ function ClassifyDialog({
             categorized. Please assign a category to each one.
           </DialogDescription>
         </DialogHeader>
-        <div className="overflow-auto flex-1 -mx-6 px-6">
-          <Table>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                <TableHead className="w-[100px] text-xs">Date</TableHead>
-                <TableHead className="text-xs">Description</TableHead>
-                <TableHead className="w-[100px] text-right text-xs">Amount</TableHead>
-                <TableHead className="w-[200px] text-xs">Category</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {uncategorized.map((t) => (
-                <TableRow key={t.id}>
-                  <TableCell className="text-[13px]">{formatDate(t.transaction_date)}</TableCell>
-                  <TableCell className="text-[13px]">{t.description}</TableCell>
-                  <TableCell className="text-right text-[13px] font-medium">{formatAmount(t.amount)}</TableCell>
-                  <TableCell>
-                    <Select value={assignments[t.id] || ""} onValueChange={(v) => set(t.id, v)}>
-                      <SelectTrigger className="h-8 text-[13px]">
-                        <SelectValue placeholder="Select..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {CATEGORIES.map((cat) => (
-                          <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+        <div className="flex-1 overflow-auto -mx-6 px-6">
+          <div
+            className="sticky top-0 z-10 flex"
+            style={{
+              gap: 12,
+              padding: "6px 4px",
+              background: COLORS.card,
+              borderBottom: `1px solid ${COLORS.divider}`,
+              fontSize: 11,
+              fontWeight: 600,
+              color: COLORS.textMuted,
+            }}
+          >
+            <span className="w-[100px] shrink-0">Date</span>
+            <span className="min-w-0 flex-1">Description</span>
+            <span className="w-[100px] shrink-0 text-right">Amount</span>
+            <span className="w-[200px] shrink-0">Category</span>
+          </div>
+          {uncategorized.map((t) => (
+            <div
+              key={t.id}
+              className="flex items-center"
+              style={{
+                gap: 12,
+                padding: "10px 4px",
+                borderBottom: `1px solid ${COLORS.divider}`,
+              }}
+            >
+              <span className="w-[100px] shrink-0 text-[13px] whitespace-nowrap">{formatDate(t.transaction_date)}</span>
+              <div className="min-w-0 flex-1 overflow-x-auto whitespace-nowrap text-[13px]" style={{ color: COLORS.textPrimary }}>
+                {t.description}
+              </div>
+              <span className="w-[100px] shrink-0 text-right text-[13px] font-medium whitespace-nowrap">{formatAmount(t.amount)}</span>
+              <div className="w-[200px] shrink-0">
+                <Select value={assignments[t.id] || ""} onValueChange={(v) => set(t.id, v)}>
+                  <SelectTrigger className="h-8 w-full text-[13px]">
+                    <SelectValue placeholder="Select..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CATEGORIES.map((cat) => (
+                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          ))}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onDone}>Skip</Button>
@@ -521,6 +528,16 @@ export default function Dashboard() {
   const [showClassify, setShowClassify] = React.useState(false)
   const [monthFilter, setMonthFilter] = React.useState("")
   const [categoryFilter, setCategoryFilter] = React.useState("All")
+  const [hiddenIds, setHiddenIds] = React.useState<Set<number>>(new Set())
+
+  const hideTransaction = (id: number) =>
+    setHiddenIds((prev) => {
+      const next = new Set(prev)
+      next.add(id)
+      return next
+    })
+
+  const showAllHidden = () => setHiddenIds(new Set())
 
   const fetchTransactions = React.useCallback(async () => {
     const token = localStorage.getItem("accessToken")
@@ -571,9 +588,11 @@ export default function Dashboard() {
   )
 
   const filtered = React.useMemo(() => {
-    if (!monthFilter) return noTransfers
-    return noTransfers.filter((t) => getMonthKey(t.transaction_date) === monthFilter)
-  }, [noTransfers, monthFilter])
+    const byMonth = monthFilter
+      ? noTransfers.filter((t) => getMonthKey(t.transaction_date) === monthFilter)
+      : noTransfers
+    return byMonth.filter((t) => !hiddenIds.has(t.id))
+  }, [noTransfers, monthFilter, hiddenIds])
 
   // Unique categories for the filter dropdown
   const availableCategories = React.useMemo(() => {
@@ -607,10 +626,12 @@ export default function Dashboard() {
 
   const prevMetrics = React.useMemo(() => {
     if (!prevMonthKey) return null
-    const prevTxns = noTransfers.filter((t) => getMonthKey(t.transaction_date) === prevMonthKey)
+    const prevTxns = noTransfers.filter(
+      (t) => getMonthKey(t.transaction_date) === prevMonthKey && !hiddenIds.has(t.id),
+    )
     if (prevTxns.length === 0) return null
     return computeMetrics(prevTxns)
-  }, [prevMonthKey, noTransfers])
+  }, [prevMonthKey, noTransfers, hiddenIds])
 
   const prevMonthName = prevMonthKey
     ? new Date(Number(prevMonthKey.split("-")[0]), Number(prevMonthKey.split("-")[1]) - 1).toLocaleDateString("en-US", { month: "short" })
@@ -625,8 +646,37 @@ export default function Dashboard() {
   const avgChange = pctChange(avgPerDay, prevMetrics?.avgPerDay)
 
   const prevTxnCount = prevMonthKey
-    ? noTransfers.filter((t) => getMonthKey(t.transaction_date) === prevMonthKey).length
+    ? noTransfers.filter(
+        (t) => getMonthKey(t.transaction_date) === prevMonthKey && !hiddenIds.has(t.id),
+      ).length
     : null
+
+  const handleCategoryChange = async (id: number, category: string) => {
+    const previous = transactions
+    setTransactions((ts) => ts.map((t) => (t.id === id ? { ...t, category } : t)))
+
+    const token = localStorage.getItem("accessToken")
+    if (!token) return
+
+    try {
+      const res = await fetch(
+        "http://localhost:3300/file/transactions/categories",
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ updates: [{ id, category }] }),
+        },
+      )
+      if (!res.ok) throw new Error("Failed to save")
+      toast.success("Category updated.", { duration: 5000 })
+    } catch {
+      setTransactions(previous)
+      toast.error("Failed to update category.")
+    }
+  }
 
   // Upload handler
   const openFilePicker = () => fileInputRef.current?.click()
@@ -947,8 +997,16 @@ export default function Dashboard() {
                   <option key={cat} value={cat}>{cat}</option>
                 ))}
               </select>
-              <span style={{ fontSize: 12, fontWeight: 500, color: COLORS.link, cursor: "pointer" }}>
-                View All
+              <span
+                onClick={showAllHidden}
+                style={{
+                  fontSize: 12,
+                  fontWeight: 500,
+                  color: hiddenIds.size > 0 ? COLORS.link : COLORS.textMuted,
+                  cursor: hiddenIds.size > 0 ? "pointer" : "default",
+                }}
+              >
+                View All{hiddenIds.size > 0 ? ` (${hiddenIds.size} hidden)` : ""}
               </span>
             </div>
           </div>
@@ -957,7 +1015,7 @@ export default function Dashboard() {
           <div
             className="grid items-center"
             style={{
-              gridTemplateColumns: "1fr 140px 100px 90px",
+              gridTemplateColumns: "1fr 140px 100px 90px 28px",
               padding: "12px 28px",
               fontSize: 11,
               fontWeight: 600,
@@ -968,6 +1026,7 @@ export default function Dashboard() {
             <span>Category</span>
             <span>Date</span>
             <span className="text-right">Amount</span>
+            <span />
           </div>
 
           {/* Rows */}
@@ -977,7 +1036,7 @@ export default function Dashboard() {
                 key={t.id}
                 className="grid items-center"
                 style={{
-                  gridTemplateColumns: "1fr 140px 100px 90px",
+                  gridTemplateColumns: "1fr 140px 100px 90px 28px",
                   padding: "14px 28px",
                   borderBottom: `1px solid ${COLORS.divider}`,
                 }}
@@ -985,15 +1044,37 @@ export default function Dashboard() {
                 <span style={{ fontSize: 13, fontWeight: 500, color: COLORS.textPrimary }}>
                   {t.description}
                 </span>
-                <span style={{ fontSize: 13, color: COLORS.textSecondary }}>
-                  {t.category}
-                </span>
+                <Select
+                  value={t.category || ""}
+                  onValueChange={(v) => handleCategoryChange(t.id, v)}
+                >
+                  <SelectTrigger
+                    size="sm"
+                    className="h-7 w-fit max-w-full border-none bg-transparent px-0 text-[13px] shadow-none data-[state=open]:bg-transparent"
+                    style={{ fontFamily: font, color: COLORS.textSecondary }}
+                  >
+                    <SelectValue placeholder="Uncategorized" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CATEGORIES.map((cat) => (
+                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <span style={{ fontSize: 13, color: COLORS.textMuted }}>
                   {formatDate(t.transaction_date)}
                 </span>
                 <span className="text-right" style={{ fontSize: 13, fontWeight: 500, color: COLORS.textPrimary }}>
                   {formatAmount(t.amount)}
                 </span>
+                <button
+                  onClick={() => hideTransaction(t.id)}
+                  title="Hide from totals"
+                  className="flex cursor-pointer items-center justify-center border-none bg-transparent p-0"
+                  style={{ color: COLORS.textMuted }}
+                >
+                  <EyeOff size={14} />
+                </button>
               </div>
             ))}
           </div>
