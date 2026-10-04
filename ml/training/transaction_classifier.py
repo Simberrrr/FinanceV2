@@ -217,6 +217,13 @@ def load_model(model_path: str = "models/categorizer.pkl") -> dict[str, Any]:
         model = pickle.load(model_file)
     if "vectorizer" not in model or "classifier" not in model:
         raise ValueError("categorizer.pkl must contain 'vectorizer' and 'classifier'.")
+
+    # The pickled classifier was trained with a newer scikit-learn that no longer
+    # sets this attribute; older installs' predict_proba still reads it.
+    classifier = model["classifier"]
+    if not hasattr(classifier, "multi_class"):
+        classifier.multi_class = "auto"
+
     return model
 
 
